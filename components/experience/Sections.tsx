@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import Image from "next/image";
-import { ABOUT, PROJECTS, EXPERIMENTS, CONTACT } from "@/lib/content";
+import { ABOUT, PROJECTS, EXPERIMENTS, CONTACT, STACK } from "@/lib/content";
 import LightBulb from "./LightBulb";
 
 type SectionKey = "about" | "projects" | "experiments" | "contact";
@@ -136,6 +136,20 @@ function About() {
           </p>
           <p className="mb-6">{ABOUT.bio}</p>
           <p className="mb-8 italic text-neutral-400">“{ABOUT.philosophy}”</p>
+
+          {/* expertise — the real stack, carried over from the old portfolio */}
+          <div className="mb-8 flex flex-col gap-3">
+            {STACK.map((g) => (
+              <div key={g.group} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="w-20 shrink-0 font-sans text-[11px] uppercase tracking-[0.18em] text-neutral-600">
+                  {g.group}
+                </span>
+                <span className="font-sans text-[13px] leading-relaxed text-neutral-400">
+                  {g.items.join(" · ")}
+                </span>
+              </div>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm tracking-wide">
             {ABOUT.socials.map((s) => (
               <a
@@ -160,17 +174,21 @@ function Projects() {
       <div className="flex flex-col gap-14">
         {PROJECTS.map((p) => (
           <article key={p.title}>
+            <p className="mb-2 font-sans text-[11px] uppercase tracking-[0.2em] text-ember/70">
+              {p.tag}
+            </p>
             <h3 className="mb-3 font-serif text-2xl text-neutral-100">{p.title}</h3>
-            <p className="mb-4 font-sans text-[15px] leading-relaxed text-neutral-300">
+            <p className="mb-4 max-w-2xl font-sans text-[15px] leading-relaxed text-neutral-300">
               {p.story}
             </p>
             {p.notes && (
-              <p className="mb-4 font-sans text-sm leading-relaxed text-neutral-500">
+              <p className="mb-4 max-w-2xl font-sans text-sm leading-relaxed text-neutral-500">
                 {p.notes}
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              {p.stack.map((t) => (
+              {/* stack is only listed where it is actually known */}
+              {p.stack?.map((t) => (
                 <span
                   key={t}
                   className="rounded-full border border-neutral-800 px-3 py-1 font-sans text-xs tracking-wide text-neutral-400"
@@ -178,12 +196,15 @@ function Projects() {
                   {t}
                 </span>
               ))}
+              {/* and a link only where one really exists */}
               {p.href && (
                 <a
                   href={p.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
                   className="ml-2 font-sans text-xs tracking-widest text-ember transition-opacity hover:opacity-70"
                 >
-                  view →
+                  visit →
                 </a>
               )}
             </div>
@@ -211,6 +232,9 @@ function Experiments() {
               }`,
             }}
           >
+            <p className="mb-1 font-sans text-[10px] uppercase tracking-[0.2em] text-neutral-500">
+              {e.tag}
+            </p>
             <h3 className="mb-2 font-serif text-xl text-neutral-100">{e.title}</h3>
             <p className="font-sans text-sm leading-relaxed text-neutral-400">
               {e.blurb}
