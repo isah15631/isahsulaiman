@@ -180,6 +180,7 @@ function Projects() {
           <article key={p.title}>
             <p className="mb-2 font-sans text-[11px] uppercase tracking-[0.2em] text-ember/70">
               {p.tag}
+              {p.year && <span className="text-neutral-600"> · {p.year}</span>}
             </p>
             <h3 className="mb-3 font-serif text-2xl text-neutral-100">{p.title}</h3>
             <p className="mb-4 max-w-2xl font-sans text-[15px] leading-relaxed text-neutral-300">
