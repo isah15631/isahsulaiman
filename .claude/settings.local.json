@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"/c/Users/user/Desktop/portfolio/assets\" && cp \"/c/Users/user/Downloads/20250514_165545_1.mp4\" \"/c/Users/user/Desktop/portfolio/assets/hero.mp4\" && ls -la \"/c/Users/user/Desktop/portfolio/assets/\")",
+      "Bash(python -m pip install --quiet imageio-ffmpeg)",
+      "Bash(python -c \"import imageio_ffmpeg as f; print\\('FFMPEG:', f.get_ffmpeg_exe\\(\\)\\)\")",
+      "Bash(ls -la \"/c/Users/user/Documents/FORMER DELL/MAIN PHP APPS/\" 2>&1)",
+      "Read(//c/Users/user/Desktop/kano/**)",
+      "Read(//c/Users/user/Desktop/kano/apps/**)",
+      "Read(//c/Users/user/Desktop/edustute/app/**)",
+      "Read(//c/xampp/htdocs/cbt_system/nexus-react/**)",
+      "Read(//c/xampp/htdocs/cbt_system/nexus-cloud-admin/**)",
+      "WebFetch(domain:www.agrifims.ng)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"vite: %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(npm -v)",
+      "Bash(npx --version)",
+      "Bash(mkdir -p legacy/vite-app)",
+      "Bash(mv src *)",
+      "Bash(mv index.html legacy/vite-app/index.html)",
+      "Bash(mv vite.config.js legacy/vite-app/vite.config.js)",
+      "Bash(mv package.json legacy/vite-app/package.json)",
+      "Bash(npm audit *)",
+      "Bash(node scripts/generate-audio.mjs)",
+      "Bash(grep -n '`' components/experience/Heart.tsx)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #000000;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--bg);
+  color: #f5f2ec;
+  /* No scrollbars during the cinematic intro. */
+  overflow: hidden;
+}
+
+/* The experience is deliberately non-selectable to keep it feeling like a film. */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ---------------- Butterflies ---------------- */
+.butterfly {
+  display: block;
+  overflow: visible;
+  /* No CSS filter here on purpose. A drop-shadow forces a blur pass to be
+     re-rasterised every frame, for every butterfly — with a swarm of them that
+     alone is enough to wreck the eruption's frame rate. The warming background
+     does the illuminating instead. */
+}
+
+/* Each wing group hinges at the body and flaps by scaling horizontally.
+   Both groups hinge on their own left edge — the left one is already mirrored
+   by its parent, so fill-box keeps the origin in the group's own space. */
+.butterfly__wing {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation-name: flap;
+  animation-duration: var(--flap, 0.28s);
+  animation-delay: var(--flap-offset, 0s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  will-change: transform;
+}
+
+@keyframes flap {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0.42); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .butterfly__wing { animation: none; transform: scaleX(0.75); }
+}
