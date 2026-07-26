@@ -22,3 +22,6 @@ yarn-error.log*
 
 # typescript
 next-env.d.ts
+
+# claude code local settings (machine-specific paths)
+.claude/settings.local.json
