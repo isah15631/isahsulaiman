@@ -34,12 +34,18 @@ npm start
 The site is fully static (`○ prerendered as static content`), so any host will
 serve it. Vercel is the least friction for Next.js.
 
-**1. Create an empty repo on GitHub** (no README, no .gitignore, no licence).
+Target URL: **isahsulaiman.vercel.app**. Vercel builds that from the *project*
+name, so the Vercel project must be called `isahsulaiman`. Naming the GitHub
+repo the same thing is the path of least resistance, since Vercel takes its
+project name from the repo by default.
+
+**1. Create an empty repo on GitHub** called `isahsulaiman` (no README, no
+.gitignore, no licence).
 
 **2. Push:**
 
 ```bash
-git remote add origin https://github.com/isah15631/dormant-heart.git
+git remote add origin https://github.com/isah15631/isahsulaiman.git
 ```
 
 ```bash
@@ -49,8 +55,15 @@ git push -u origin main
 The first push opens a browser window to authenticate.
 
 **3. Deploy on Vercel:** sign in at vercel.com with GitHub, *Add New → Project*,
-import the repo. Every setting is detected automatically; no environment
-variables are needed. Later pushes to `main` redeploy on their own.
+import the repo. Confirm the project name reads `isahsulaiman` on the import
+screen, since that is what decides the URL. Every other setting is detected
+automatically and no environment variables are needed. Later pushes to `main`
+redeploy on their own.
+
+If `isahsulaiman.vercel.app` is already taken by another Vercel account, the
+import will refuse the name and you will need a variant. The project can be
+renamed later under *Settings → General*, and a custom domain can be added at
+any time, which makes the .vercel.app name cosmetic anyway.
 
 Netlify and Cloudflare Pages work too. Build command `npm run build`, and both
 need their Next.js adapter.
