@@ -183,8 +183,15 @@ const fragmentShader = /* glsl */ `
     // Seams run along Voronoi cell boundaries, so the surface reads as
     // irregular slabs of rock divided by fissures — and the seams sit roughly
     // where the heart will actually break apart.
-    vec3 vor = voronoi(vPos * 3.1);
+    // Raw Voronoi gives tidy convex cells, which reads as crazy-paving rather
+    // than broken stone. Warping the space first makes the plates irregular and
+    // organic; the high-frequency term then frays the seams so no edge is a
+    // clean mathematical curve.
+    float warp = fbm2(vPos * 1.7);
+    vec3 q = vPos * 3.0 + vec3(warp, warp * 0.75, -warp) * 0.6;
+    vec3 vor = voronoi(q);
     float seam = vor.y - vor.x;   // → 0 at a plate boundary
+    seam += snoise(vPos * 15.0) * 0.020;  // ragged, chipped edges
     float plate = vor.z;          // per-plate random
 
     // Plates give way a few at a time: one fissure at first, the whole
@@ -193,9 +200,17 @@ const fragmentShader = /* glsl */ `
     float opened = smoothstep(openT + 0.09, openT - 0.09, plate);
     opened *= step(0.001, uAwaken);
 
-    float seamW = mix(0.05, 0.10, uAwaken);   // fissures widen as it wakes
+    // Fissures widen as it wakes, and vary along their length — a crack of
+    // constant width looks machined.
+    float seamW = mix(0.05, 0.10, uAwaken) * (0.65 + 0.7 * (snoise(vPos * 5.5) * 0.5 + 0.5));
     float lip = (1.0 - smoothstep(seamW * 0.45, seamW, seam)) * opened;
     float core = (1.0 - smoothstep(0.0, seamW * 0.5, seam)) * opened;
+
+    // A lit ridge just outside the fissure, where the broken edge catches the
+    // light. Without it the crack is a flat dark line painted on a smooth
+    // surface; with it the stone reads as having depth.
+    float ridge = (smoothstep(seamW, seamW * 1.5, seam) *
+                   (1.0 - smoothstep(seamW * 1.5, seamW * 2.6, seam))) * opened;
 
     // stone — desaturated grey, cool rim
     vec3 stone = vec3(0.26 + 0.15 * grain) + fres * 0.14;
@@ -203,24 +218,27 @@ const fragmentShader = /* glsl */ `
     // living — warm core to gold
     vec3 living = mix(vec3(1.0, 0.30, 0.16), vec3(1.0, 0.74, 0.32), plate);
 
-    // A plate that has broken open glows across its face, brightest at the
-    // seams. Confining the colour to the seams alone just outlines the plates
-    // instead of returning colour to the heart.
-    float bleed = 1.0 - smoothstep(0.0, mix(0.14, 0.85, uAwaken), seam);
-    float fill = mix(0.60, 1.0, uAwaken);
-    float alive = clamp(opened * max(bleed, fill), 0.0, 1.0);
-    vec3 col = mix(stone, living, alive);
+    // The light lives INSIDE the fissures, and the surface stays stone until
+    // late. Filling each plate with flat colour reads as paint on a pebble;
+    // rock with something burning behind it glows out of its cracks and only
+    // spills a little onto the stone around them.
+    float channel = (1.0 - smoothstep(0.0, seamW, seam)) * opened;
+    float spill = (1.0 - smoothstep(0.0, seamW * 4.5, seam)) * opened;
+    // only in the last stages does the interior itself flood with light
+    float flood = opened * smoothstep(0.58, 1.0, uAwaken);
+    float pulse = 1.0 + uPulse * 0.9;
 
-    // darken the broken lip FIRST so the glow below reads as light from within
-    col = mix(col, vec3(0.015, 0.012, 0.010), lip * 0.8);
+    vec3 col = stone;
+    col = mix(col, vec3(0.015, 0.012, 0.010), lip * 0.85);  // dark fissure walls
+    col += vec3(0.55, 0.52, 0.48) * ridge * 0.30;           // lit broken edge
+    col = mix(col, living * 0.85, clamp(flood * 0.8, 0.0, 1.0));
 
-    // light escaping the fissures
-    float emis = core * (1.4 + 1.2 * uAwaken) + alive * uAwaken * 0.30;
-    emis *= 1.0 + uPulse * 0.9;
-    col += vec3(1.0, 0.45, 0.2) * emis;
+    col += living * channel * (0.55 + 0.85 * uAwaken) * pulse;   // light from within
+    col += living * core * (0.35 + 0.6 * uAwaken) * pulse;       // hottest centre
+    col += living * spill * (0.08 + 0.26 * uAwaken) * pulse;     // spill onto stone
 
-    // warm rim when alive
-    col += mix(vec3(0.0), vec3(1.0, 0.5, 0.25), alive) * fres * 0.55;
+    // warm rim once it is properly alight
+    col += vec3(1.0, 0.5, 0.25) * fres * 0.45 * flood;
 
     gl_FragColor = vec4(col, 1.0);
   }

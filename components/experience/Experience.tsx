@@ -133,11 +133,22 @@ export default function Experience() {
       <AnimatePresence>
         {phase === "intro" && taps === 0 && (
           <motion.p
-            className="pointer-events-none absolute inset-x-0 bottom-[18%] z-20 text-center font-serif text-2xl font-light lowercase tracking-[0.2em] text-neutral-400"
+            // Sat at 18% it landed on the heart's own dark underside and was
+            // effectively invisible. Lower, brighter, and lifted clear of the
+            // silhouette — it is the only instruction in the whole piece.
+            className="pointer-events-none absolute inset-x-0 bottom-[9%] z-20 text-center font-serif text-2xl font-light lowercase tracking-[0.35em] text-neutral-100/90 sm:text-3xl"
+            style={{ textShadow: "0 0 18px rgba(0,0,0,0.9)" }}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            animate={{ opacity: [0, 0.95, 0.6, 0.95] }}
             exit={{ opacity: 0, transition: { duration: 0.8, delay: 0 } }}
-            transition={{ duration: 2.6, delay: 1.2, ease: "easeInOut" }}
+            transition={{
+              duration: 5.4,
+              delay: 0.8,
+              ease: "easeInOut",
+              times: [0, 0.3, 0.65, 1],
+              repeat: Infinity,
+              repeatType: "reverse",
+            }}
           >
             tap.
           </motion.p>

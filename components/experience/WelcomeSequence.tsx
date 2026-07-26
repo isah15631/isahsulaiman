@@ -18,18 +18,29 @@ const LIFT_SECONDS = 2.8;
 // The carriers hold on a moment after the word settles, then leave.
 const RELEASE_AT = LIFT_DELAY + LIFT_SECONDS + 0.55;
 
-/** One of the two butterflies carrying the word up, and its flight away. */
+const TOTAL = RELEASE_AT + 1.9;
+
+/**
+ * One of the two butterflies carrying the word up, with the thread it holds it
+ * by. The thread hangs from the butterfly down to the top of the word; when the
+ * butterfly lets go it goes slack and fades, and only the butterfly flies on.
+ */
 function Carrier({
   color,
   size,
   flap,
   away,
+  tilt,
+  threadLength,
   className,
 }: {
   color: string;
   size: number;
   flap: number;
   away: { x: number; y: number };
+  /** degrees — leans the thread in toward the word */
+  tilt: number;
+  threadLength: number;
   className: string;
 }) {
   return (
@@ -43,12 +54,35 @@ function Carrier({
         y: [0, 0, 0, away.y * 0.35, away.y],
       }}
       transition={{
-        duration: RELEASE_AT + 1.9,
+        duration: TOTAL,
         ease: "easeInOut",
-        times: [0, LIFT_DELAY / (RELEASE_AT + 1.9), RELEASE_AT / (RELEASE_AT + 1.9), (RELEASE_AT + 0.9) / (RELEASE_AT + 1.9), 1],
+        times: [
+          0,
+          LIFT_DELAY / TOTAL,
+          RELEASE_AT / TOTAL,
+          (RELEASE_AT + 0.9) / TOTAL,
+          1,
+        ],
       }}
     >
       <Butterfly color={color} size={size} flapDuration={flap} />
+
+      {/* the thread it carries the word by — taut while lifting, gone once released */}
+      <motion.span
+        className="absolute left-1/2 top-full block w-px origin-top"
+        style={{
+          height: threadLength,
+          background:
+            "linear-gradient(to bottom, rgba(245,242,236,0.55), rgba(245,242,236,0.12))",
+        }}
+        initial={{ opacity: 0, rotate: tilt, scaleY: 0.7 }}
+        animate={{ opacity: [0, 0.9, 0.9, 0], scaleY: [0.7, 1, 1, 1] }}
+        transition={{
+          duration: TOTAL,
+          ease: "easeInOut",
+          times: [0, LIFT_DELAY / TOTAL, RELEASE_AT / TOTAL, (RELEASE_AT + 0.5) / TOTAL],
+        }}
+      />
     </motion.div>
   );
 }
@@ -99,17 +133,21 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
             {isFirst && (
               <>
                 <Carrier
-                  className="-top-6 left-1 md:-top-8"
+                  className="-top-12 left-2 md:-top-16"
                   color="#f2b544"
                   size={22}
                   flap={0.26}
+                  tilt={14}
+                  threadLength={30}
                   away={{ x: -150, y: -110 }}
                 />
                 <Carrier
-                  className="-top-7 right-1 md:-top-9"
+                  className="-top-14 right-2 md:-top-[4.5rem]"
                   color="#f7f3ea"
                   size={20}
                   flap={0.31}
+                  tilt={-14}
+                  threadLength={36}
                   away={{ x: 160, y: -128 }}
                 />
               </>
