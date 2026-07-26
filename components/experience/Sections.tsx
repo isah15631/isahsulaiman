@@ -134,14 +134,18 @@ function About() {
           <p className="mb-6 text-sm uppercase tracking-widest text-ember/80">
             {ABOUT.role}
           </p>
-          <p className="mb-6">{ABOUT.bio}</p>
-          <p className="mb-8 italic text-neutral-400">“{ABOUT.philosophy}”</p>
+          <p className="mb-8">{ABOUT.bio}</p>
 
-          {/* expertise — the real stack, carried over from the old portfolio */}
+          {/* expertise: the real stack */}
           <div className="mb-8 flex flex-col gap-3">
             {STACK.map((g) => (
-              <div key={g.group} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="w-20 shrink-0 font-sans text-[11px] uppercase tracking-[0.18em] text-neutral-600">
+              // grid, not flex-wrap: a long row would otherwise drop its items
+              // under the label and break alignment with the rows beneath it
+              <div
+                key={g.group}
+                className="grid grid-cols-[7rem_1fr] items-baseline gap-x-4 gap-y-1"
+              >
+                <span className="font-sans text-[11px] uppercase leading-5 tracking-[0.16em] text-neutral-600">
                   {g.group}
                 </span>
                 <span className="font-sans text-[13px] leading-relaxed text-neutral-400">
