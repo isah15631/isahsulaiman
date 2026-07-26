@@ -27,7 +27,8 @@
       "Bash(git init *)",
       "Bash(git add *)",
       "PowerShell($c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { Stop-Process -Id $c.OwningProcess -Force; Write-Output \"stopped dev server\" } else { Write-Output \"port 3000 free\" })",
-      "PowerShell($c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { Stop-Process -Id $c.OwningProcess -Force; Write-Output \"stopped\" } else { Write-Output \"free\" })"
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { Stop-Process -Id $c.OwningProcess -Force; Write-Output \"stopped\" } else { Write-Output \"free\" })",
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $c | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Write-Output \"stopped dev server\" } else { Write-Output \"port 3000 free\" })"
     ]
   }
 }

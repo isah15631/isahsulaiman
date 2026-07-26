@@ -119,15 +119,42 @@ function About() {
   return (
     <div>
       <Heading>About</Heading>
-      <div className="flex flex-col gap-10 md:flex-row md:items-start">
-        <div className="relative h-56 w-44 shrink-0 overflow-hidden rounded-sm grayscale-[15%]">
-          <Image
-            src={ABOUT.photo}
-            alt={ABOUT.name}
-            fill
-            sizes="180px"
-            className="object-cover"
+      <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
+        {/* The portrait carries the same idea as the heart: colour returning to
+            something that began without it. It warms out of grayscale as it
+            arrives, and its lower edge dissolves into the page instead of
+            stopping at a hard rectangle, which on a phone was the flattest
+            thing on the site. */}
+        <div className="relative mx-auto w-[min(78%,17rem)] shrink-0 md:mx-0 md:w-44">
+          {/* warm light pooling behind him, echoing the bulb */}
+          <div
+            className="pointer-events-none absolute -inset-x-8 -inset-y-6 -z-10 blur-2xl"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 45%, rgba(255,150,80,0.18), rgba(255,130,60,0.05) 55%, transparent 78%)",
+            }}
           />
+          <motion.div
+            className="relative aspect-[3/4] overflow-hidden rounded-sm"
+            style={{
+              WebkitMaskImage:
+                "linear-gradient(to bottom, #000 58%, rgba(0,0,0,0.55) 82%, transparent 100%)",
+              maskImage:
+                "linear-gradient(to bottom, #000 58%, rgba(0,0,0,0.55) 82%, transparent 100%)",
+            }}
+            initial={{ opacity: 0, filter: "grayscale(1) brightness(0.7)" }}
+            animate={{ opacity: 1, filter: "grayscale(0) brightness(1)" }}
+            transition={{ duration: 1.8, ease: "easeOut", delay: 0.2 }}
+          >
+            <Image
+              src={ABOUT.photo}
+              alt={ABOUT.name}
+              fill
+              sizes="(max-width: 768px) 78vw, 180px"
+              priority
+              className="object-cover object-top"
+            />
+          </motion.div>
         </div>
         <div className="font-sans text-[15px] leading-relaxed text-neutral-300">
           <p className="mb-1 font-serif text-2xl text-neutral-100">{ABOUT.name}</p>
@@ -151,15 +178,21 @@ function About() {
             ))}
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm tracking-wide">
-            {ABOUT.socials.map((s) => (
-              <a
-                key={s.label}
-                href={s.href}
-                className="text-neutral-400 transition-colors hover:text-ember"
-              >
-                {s.label}
-              </a>
-            ))}
+            {ABOUT.socials.map((s) => {
+              const external = s.href.startsWith("http");
+              return (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  {...(external
+                    ? { target: "_blank", rel: "noreferrer noopener" }
+                    : {})}
+                  className="text-neutral-400 transition-colors hover:text-ember"
+                >
+                  {s.label}
+                </a>
+              );
+            })}
           </div>
         </div>
       </div>

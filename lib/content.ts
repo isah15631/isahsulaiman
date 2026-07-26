@@ -7,7 +7,6 @@
 //
 // Still mine rather than his, and marked TODO below:
 //   • the Sprimart story, the last invented one
-//   • every social URL
 //
 // House style: no em dashes anywhere in copy.
 //
@@ -19,12 +18,10 @@ export const ABOUT = {
   name: "Isah Sulaiman",
   role: "Full-Stack Developer & AI Enthusiast",
   bio: "I build software that most people never see: educational institutions, cooperatives, clinics, agribusinesses and shopfronts. Whatever problem someone has, I tailor a solution that solves it for them beautifully.",
-  // TODO(isah): real URLs, these go nowhere
   socials: [
     { label: "Email", href: "mailto:isah15631@gmail.com" },
-    { label: "GitHub", href: "#" },
-    { label: "Twitter / X", href: "#" },
-    { label: "LinkedIn", href: "#" },
+    { label: "GitHub", href: "https://github.com/isah15631" },
+    { label: "X", href: "https://x.com/isahsulaiman27" },
   ],
 };
 
@@ -184,11 +181,10 @@ export const EXPERIMENTS: Experiment[] = [
 
 export const CONTACT = {
   email: "isah15631@gmail.com",
-  // TODO(isah): real URLs, these go nowhere
+  // LinkedIn deliberately left out.
   socials: [
-    { label: "GitHub", href: "#" },
-    { label: "Twitter / X", href: "#" },
-    { label: "LinkedIn", href: "#" },
+    { label: "GitHub", href: "https://github.com/isah15631" },
+    { label: "X", href: "https://x.com/isahsulaiman27" },
   ],
   invitation:
     "For collaborations, commissions, or a conversation about something you would like to bring to life, I would love to hear from you.",
