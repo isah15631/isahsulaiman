@@ -177,7 +177,13 @@ The intro is a **five-tap** sequence on the heart, then a silent welcome, then E
 - Social platforms
 - Collaboration enquiries
 - Future project discussions
-- Keep the form **minimal and beautiful**.
+- **No form.** The address itself is the invitation: a large `mailto:` link, a
+  quiet "copy address" beside it, and the social links. Nothing to submit.
+
+  > Supersedes the original brief's "keep the form minimal and beautiful".
+  > Changed at Isah's request — a form that posts nowhere is worse than an
+  > honest address, and this keeps the site dependency-free and hostable
+  > anywhere.
 
 ---
 

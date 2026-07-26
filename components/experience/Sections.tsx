@@ -223,68 +223,51 @@ function Experiments() {
 }
 
 function Contact() {
-  const [sent, setSent] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTACT.email);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard blocked (insecure context, or the user said no) — the
+      // mailto link beside it still works, so this stays silent.
+    }
+  };
+
   return (
     <div>
       <Heading>Contact</Heading>
-      <p className="mb-10 max-w-xl font-sans text-[15px] leading-relaxed text-neutral-300">
+      <p className="mb-12 max-w-xl font-sans text-[15px] leading-relaxed text-neutral-300">
         {CONTACT.invitation}
       </p>
 
-      {sent ? (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="font-serif text-2xl text-ember"
-        >
-          thank you — i’ll be in touch.
-        </motion.p>
-      ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            // front-end demo only — wire to your email service when ready
-            setSent(true);
-          }}
-          className="flex max-w-xl flex-col gap-5"
-        >
-          <input
-            required
-            placeholder="your name"
-            className="border-b border-neutral-800 bg-transparent pb-2 font-sans text-neutral-200 placeholder:text-neutral-600 focus:border-ember focus:outline-none"
-          />
-          <input
-            required
-            type="email"
-            placeholder="your email"
-            className="border-b border-neutral-800 bg-transparent pb-2 font-sans text-neutral-200 placeholder:text-neutral-600 focus:border-ember focus:outline-none"
-          />
-          <textarea
-            required
-            rows={4}
-            placeholder="your message"
-            className="resize-none border-b border-neutral-800 bg-transparent pb-2 font-sans text-neutral-200 placeholder:text-neutral-600 focus:border-ember focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="mt-4 self-start font-sans text-sm tracking-widest text-ember transition-opacity hover:opacity-70"
-          >
-            send →
-          </button>
-        </form>
-      )}
+      {/* No form: the address itself is the invitation. */}
+      <a
+        href={`mailto:${CONTACT.email}`}
+        className="group inline-block font-serif text-2xl font-light tracking-wide text-neutral-100 transition-colors duration-500 hover:text-ember sm:text-4xl"
+      >
+        {CONTACT.email}
+        <span className="mt-2 block h-px w-full origin-left scale-x-100 bg-neutral-700 transition-colors duration-500 group-hover:bg-ember" />
+      </a>
 
-      <div className="mt-14 flex flex-wrap gap-x-6 gap-y-2 font-sans text-sm">
-        <a
-          href={`mailto:${CONTACT.email}`}
-          className="text-neutral-400 transition-colors hover:text-ember"
+      <div className="mt-4 h-5">
+        <button
+          onClick={copy}
+          className="font-sans text-xs tracking-widest text-neutral-500 transition-colors hover:text-ember"
         >
-          {CONTACT.email}
-        </a>
+          {copied ? "copied." : "copy address"}
+        </button>
+      </div>
+
+      <div className="mt-16 flex flex-wrap gap-x-8 gap-y-3 font-sans text-sm">
         {CONTACT.socials.map((s) => (
           <a
             key={s.label}
             href={s.href}
+            target="_blank"
+            rel="noreferrer noopener"
             className="text-neutral-400 transition-colors hover:text-ember"
           >
             {s.label}
