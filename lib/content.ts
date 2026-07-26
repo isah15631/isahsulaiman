@@ -28,26 +28,48 @@ export const ABOUT = {
   ],
 };
 
-/** Real, from the previous portfolio, plus what this build added. */
+/** Isah's own stack listing, given verbatim. */
 export const STACK: { group: string; items: string[] }[] = [
+  {
+    group: "Languages",
+    items: ["JavaScript", "Python", "PHP", "SQL", "HTML5", "CSS3"],
+  },
   {
     group: "Frontend",
     items: [
       "React",
-      "Next.js",
-      "TypeScript",
-      "JavaScript (ES6+)",
-      "Tailwind CSS",
-      "shadcn/ui",
       "Vite",
+      "Tailwind CSS",
+      "PWAs",
+      "Offline-first",
+      "Responsive Design",
     ],
   },
-  { group: "Backend", items: ["Node.js", "Express", "PHP", "PDO", "REST APIs"] },
   {
-    group: "Data & Auth",
-    items: ["Supabase / Postgres", "Firebase", "MongoDB", "MySQL", "Clerk"],
+    group: "Backend & Cloud",
+    items: [
+      "Supabase",
+      "PostgreSQL",
+      "MySQL",
+      "AWS",
+      "REST APIs",
+      "RPC",
+      "Row-Level Security",
+      "Edge Functions",
+      "IndexedDB",
+    ],
   },
-  { group: "Tooling", items: ["Git & GitHub", "PWA", "Netlify"] },
+  {
+    group: "Practices & Tools",
+    items: [
+      "Software Architecture",
+      "Multi-tenant SaaS",
+      "RBAC",
+      "Git/GitHub",
+      "VS Code",
+      "AI-assisted Development",
+    ],
+  },
 ];
 
 export type Project = {
@@ -122,7 +144,9 @@ export type Experiment = {
   href?: string;
 };
 
-// Smaller real builds, framed as explorations rather than flagships.
+// Smaller real builds, framed as explorations rather than flagships. All from
+// roughly 2015 to 2020, shown as a range on the section rather than a year per
+// card, since only the period is known.
 // TODO(isah): move any of these up into PROJECTS if they deserve it, and tell
 // me which are genuinely playful experiments versus commissioned work.
 export const EXPERIMENTS: Experiment[] = [

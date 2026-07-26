@@ -136,21 +136,17 @@ function About() {
           </p>
           <p className="mb-8">{ABOUT.bio}</p>
 
-          {/* expertise: the real stack */}
-          <div className="mb-8 flex flex-col gap-3">
+          {/* expertise: label above its list, so a long group name like
+              "Practices & Tools" cannot squeeze the items into a narrow column */}
+          <div className="mb-8 flex flex-col gap-4">
             {STACK.map((g) => (
-              // grid, not flex-wrap: a long row would otherwise drop its items
-              // under the label and break alignment with the rows beneath it
-              <div
-                key={g.group}
-                className="grid grid-cols-[7rem_1fr] items-baseline gap-x-4 gap-y-1"
-              >
-                <span className="font-sans text-[11px] uppercase leading-5 tracking-[0.16em] text-neutral-600">
+              <div key={g.group}>
+                <p className="mb-1 font-sans text-[11px] uppercase tracking-[0.18em] text-neutral-600">
                   {g.group}
-                </span>
-                <span className="font-sans text-[13px] leading-relaxed text-neutral-400">
+                </p>
+                <p className="font-sans text-[13px] leading-relaxed text-neutral-400">
                   {g.items.join(" · ")}
-                </span>
+                </p>
               </div>
             ))}
           </div>
@@ -224,6 +220,9 @@ function Experiments() {
   return (
     <div>
       <Heading>Experiments</Heading>
+      <p className="-mt-6 mb-10 font-sans text-[11px] uppercase tracking-[0.2em] text-neutral-600">
+        Earlier work, 2015 to 2020
+      </p>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {EXPERIMENTS.map((e, i) => (
           <motion.div
