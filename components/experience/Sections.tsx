@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import Image from "next/image";
 import { ABOUT, PROJECTS, EXPERIMENTS, CONTACT } from "@/lib/content";
+import LightBulb from "./LightBulb";
 
 type SectionKey = "about" | "projects" | "experiments" | "contact";
 const MENU: { key: SectionKey; label: string }[] = [
@@ -22,38 +23,66 @@ const fade = {
 
 export default function Sections() {
   const [selected, setSelected] = useState<SectionKey | null>(null);
+  // The room starts dark. Finding the switch is the point.
+  const [lightOn, setLightOn] = useState(false);
+
+  // Only the menu lives in the dark; once you are inside a section you can read.
+  const lit = lightOn || selected !== null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0a0705] text-neutral-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#070504] text-neutral-200">
       {/* warm vignette so sections feel like the world the butterflies made */}
-      <div
+      <motion.div
         className="pointer-events-none fixed inset-0"
         style={{
           background:
             "radial-gradient(120% 90% at 50% 0%, rgba(255,120,60,0.08), transparent 55%)",
         }}
+        initial={false}
+        animate={{ opacity: lit ? 1 : 0.25 }}
+        transition={{ duration: 0.6 }}
       />
 
       <AnimatePresence mode="wait">
         {selected === null ? (
-          <motion.nav
+          <motion.div
             key="menu"
             {...fade}
-            className="relative flex min-h-screen flex-col items-center justify-center gap-6"
+            className="relative flex min-h-[100dvh] flex-col items-center justify-center"
           >
-            {MENU.map((m, i) => (
-              <motion.button
-                key={m.key}
-                onClick={() => setSelected(m.key)}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 + i * 0.12, duration: 0.7 }}
-                className="font-serif text-3xl font-light tracking-wide text-neutral-300 transition-colors duration-500 hover:text-ember md:text-5xl"
-              >
-                {m.label}
-              </motion.button>
-            ))}
-          </motion.nav>
+            <LightBulb on={lightOn} onToggle={() => setLightOn((v) => !v)} />
+
+            {/* The menu only exists while the light is on. Off, the room is
+                dark and there is nothing to read or click. */}
+            <nav
+              className="relative z-10 mt-[26vh] flex flex-col items-center gap-6"
+              aria-hidden={!lightOn}
+            >
+              {MENU.map((m, i) => (
+                <motion.button
+                  key={m.key}
+                  onClick={() => setSelected(m.key)}
+                  tabIndex={lightOn ? 0 : -1}
+                  initial={false}
+                  animate={{
+                    opacity: lightOn ? 1 : 0,
+                    y: lightOn ? 0 : 8,
+                    filter: lightOn ? "blur(0px)" : "blur(3px)",
+                  }}
+                  transition={{
+                    duration: lightOn ? 0.55 : 0.3,
+                    delay: lightOn ? 0.12 + i * 0.09 : 0,
+                    ease: "easeOut",
+                  }}
+                  className={`font-serif text-3xl font-light tracking-wide text-neutral-200 transition-colors duration-500 hover:text-ember md:text-5xl ${
+                    lightOn ? "" : "pointer-events-none"
+                  }`}
+                >
+                  {m.label}
+                </motion.button>
+              ))}
+            </nav>
+          </motion.div>
         ) : (
           <motion.section
             key={selected}
