@@ -7,6 +7,7 @@ let crackSound: Howl | null = null;
 let shatterSound: Howl | null = null;
 let chimeSound: Howl | null = null;
 let swellSound: Howl | null = null;
+let clickSound: Howl | null = null;
 let initialised = false;
 
 function init() {
@@ -24,6 +25,7 @@ function init() {
   shatterSound = new Howl({ src: ["/audio/shatter.wav"], volume: 0.85 });
   chimeSound = new Howl({ src: ["/audio/chime.wav"], volume: 0.6 });
   swellSound = new Howl({ src: ["/audio/swell.wav"], volume: 0.6 });
+  clickSound = new Howl({ src: ["/audio/click.wav"], volume: 0.35 });
 }
 
 // Called on the first user gesture (the first tap) — unlocks audio.
@@ -52,6 +54,14 @@ export function playShatter() {
 
 export function playChime() {
   chimeSound?.play();
+}
+
+/** The pull-chain on the bulb. Self-initialises: by the time anyone reaches
+ *  the menu the intro has already unlocked audio, but the switch should still
+ *  make a sound if it is somehow the first thing they touch. */
+export function playClick() {
+  init();
+  clickSound?.play();
 }
 
 export function playSwell() {

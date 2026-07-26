@@ -122,6 +122,29 @@ function shatter() {
   return normalize(d, 0.8);
 }
 
+// ---- click: the pull-chain on the bulb ----
+// A small mechanical tick, not a UI beep: a short resonant body with a little
+// noise for the mechanism, and a second softer tick as the chain settles.
+function click() {
+  const d = buffer(0.16);
+  const tick = (start, amp, decay, freq) => {
+    const s = Math.floor(start * SR);
+    for (let i = 0; i < 0.09 * SR && s + i < d.length; i++) {
+      const t = i / SR;
+      const env = Math.exp(-t * decay) * (t < 0.0006 ? t / 0.0006 : 1);
+      const tone =
+        Math.sin(2 * Math.PI * freq * t) * 0.6 +
+        Math.sin(2 * Math.PI * freq * 1.6 * t) * 0.22;
+      const noise = (Math.random() * 2 - 1) * 0.45;
+      d[s + i] += (tone + noise) * env * amp;
+    }
+  };
+  tick(0, 1.0, 120, 2100); // the catch
+  tick(0.032, 0.42, 150, 1500); // the chain settling back
+  lowpass(d, 5200);
+  return normalize(d, 0.42);
+}
+
 // A bell partial with exponential decay.
 function bell(data, start, freq, amp, decay) {
   const s = Math.floor(start * SR);
@@ -179,5 +202,6 @@ save("heartbeat.wav", heartbeat());
 save("crack.wav", crack());
 save("shatter.wav", shatter());
 save("chime.wav", chime());
+save("click.wav", click());
 save("swell.wav", swell());
 console.log("Done.");

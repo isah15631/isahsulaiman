@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { playClick } from "@/lib/audio";
 
 // A bulb on a cord with a pull-chain. Pull it and light falls over the menu;
 // pull it again and the menu goes back into the dark.
@@ -78,7 +79,10 @@ export default function LightBulb({ on, onToggle }: Props) {
         {/* pull chain — the thing you actually click */}
         <button
           type="button"
-          onClick={onToggle}
+          onClick={() => {
+            playClick();
+            onToggle();
+          }}
           aria-label={on ? "Turn the light off" : "Turn the light on"}
           aria-pressed={on}
           className="pointer-events-auto group absolute -right-1 top-[calc(clamp(56px,12vh,130px)+52px)] flex cursor-pointer flex-col items-center p-3"
