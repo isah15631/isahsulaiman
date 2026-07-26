@@ -18,8 +18,15 @@ const sans = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "The Dormant Heart",
-  description: "A quiet cinematic story by Isah Sulaiman.",
+  title: "Isah Sulaiman",
+  description:
+    "Full-Stack Developer and AI Enthusiast. I build software that most people never see: educational institutions, cooperatives, clinics, agribusinesses and shopfronts.",
+  openGraph: {
+    title: "Isah Sulaiman",
+    description:
+      "Full-Stack Developer and AI Enthusiast. Whatever problem someone has, I tailor a solution that solves it for them beautifully.",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {

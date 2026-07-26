@@ -30,7 +30,10 @@ export default function Sections() {
   const lit = lightOn || selected !== null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#070504] text-neutral-200">
+    // overflow-x-hidden matters: the bulb's light cone is deliberately wider
+    // than the screen, and without clipping it gives the page a horizontal
+    // scrollbar that drags the whole room sideways away from the lamp.
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-[#070504] text-neutral-200">
       {/* warm vignette so sections feel like the world the butterflies made */}
       <motion.div
         className="pointer-events-none fixed inset-0"

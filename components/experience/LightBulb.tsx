@@ -125,7 +125,10 @@ export default function LightBulb({ on, onToggle }: Props) {
           className="pointer-events-none absolute left-1/2 -z-10 -translate-x-1/2"
           style={{
             top: "calc(clamp(56px, 12vh, 130px) + 74px)",
-            width: "min(150vw, 1100px)",
+            // capped at the viewport: any wider and the cone just spills off
+            // both edges, costing layout width and a blur pass for pixels
+            // nobody can see
+            width: "min(100vw, 1100px)",
             height: "min(95vh, 780px)",
           }}
         >
@@ -151,7 +154,7 @@ export default function LightBulb({ on, onToggle }: Props) {
           className="pointer-events-none absolute left-1/2 -z-10 -translate-x-1/2"
           style={{
             top: "calc(clamp(56px, 12vh, 130px) + 430px)",
-            width: "min(120vw, 900px)",
+            width: "min(100vw, 900px)",
             height: "340px",
           }}
         >

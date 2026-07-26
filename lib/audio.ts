@@ -28,9 +28,23 @@ function init() {
   clickSound = new Howl({ src: ["/audio/click.wav"], volume: 0.35 });
 }
 
+/**
+ * iOS and, increasingly, Android start the Web Audio context suspended and
+ * only allow it to be resumed from inside a real user gesture. Howler's own
+ * unlock does not always win, so resume explicitly on every gesture we get.
+ * Cheap and idempotent when the context is already running.
+ */
+function resumeContext() {
+  const ctx = Howler.ctx as AudioContext | undefined;
+  if (ctx && ctx.state !== "running") {
+    void ctx.resume().catch(() => {});
+  }
+}
+
 // Called on the first user gesture (the first tap) — unlocks audio.
 export function startAudio() {
   init();
+  resumeContext();
 }
 
 export function setHeartbeat(rate: number, volume: number) {
@@ -61,6 +75,7 @@ export function playChime() {
  *  make a sound if it is somehow the first thing they touch. */
 export function playClick() {
   init();
+  resumeContext();
   clickSound?.play();
 }
 
