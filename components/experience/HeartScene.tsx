@@ -1,10 +1,30 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
+import type { PerspectiveCamera } from "three";
 import { createHeartGeometry, sampleSurface } from "@/lib/heartGeometry";
 import Heart from "./Heart";
 import StoneMotes from "./StoneMotes";
+
+// The heart is ~2.4 units across. A perspective camera's fov is VERTICAL, so on
+// a portrait phone the horizontal view is far narrower and the heart's sides get
+// cropped. Pull the camera back until it fits on whichever axis is tighter.
+const HALF_EXTENT = 1.45; // half the heart, plus breathing room
+
+function FitCamera() {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const cam = camera as PerspectiveCamera;
+    const halfFov = (cam.fov * Math.PI) / 360;
+    const aspect = size.width / Math.max(1, size.height);
+    const forHeight = HALF_EXTENT / Math.tan(halfFov);
+    const forWidth = forHeight / Math.max(0.0001, aspect);
+    cam.position.z = Math.max(5, forHeight, forWidth);
+    cam.updateProjectionMatrix();
+  }, [camera, size]);
+  return null;
+}
 
 type HeartSceneProps = {
   targetAwaken: number;
@@ -25,6 +45,7 @@ function Contents(props: HeartSceneProps) {
 
   return (
     <>
+      <FitCamera />
       {/* deliberately restrained lighting — the heart lights itself as it wakes */}
       <ambientLight intensity={0.25} />
       <directionalLight position={[3, 4, 5]} intensity={0.7} />
@@ -40,13 +61,15 @@ function Contents(props: HeartSceneProps) {
 }
 
 export default function HeartScene(props: HeartSceneProps) {
+  // Phones combine the highest pixel ratios with the weakest GPUs, and this is
+  // a fragment-heavy shader — so cap them harder than desktop.
+  const narrow = typeof window !== "undefined" && window.innerWidth < 640;
+
   return (
     <Canvas
       camera={{ position: [0, 0, 5], fov: 42 }}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-      // The heart shader is fragment-heavy; capping the pixel ratio at 1.5
-      // keeps retina displays from quadrupling the cost for no visible gain.
-      dpr={[1, 1.5]}
+      gl={{ antialias: !narrow, alpha: true, powerPreference: "high-performance" }}
+      dpr={[1, narrow ? 1.25 : 1.5]}
     >
       <Contents {...props} />
     </Canvas>

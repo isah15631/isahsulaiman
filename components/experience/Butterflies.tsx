@@ -119,8 +119,14 @@ export default function Butterflies({ count = 160 }: { count?: number }) {
       })
     );
 
+    // A phone has a fraction of the screen area and a fraction of the GPU, so
+    // scale the swarm to the viewport rather than shipping a desktop-sized
+    // eruption to a 375px screen.
+    const areaRatio = (vw * vh) / (1280 * 720);
+    const n = Math.max(70, Math.round(count * Math.min(1, Math.max(0.5, areaRatio))));
+
     const reach = Math.hypot(vw, vh) * 0.8;
-    const specs: Spec[] = Array.from({ length: count }, (_, i) => {
+    const specs: Spec[] = Array.from({ length: n }, (_, i) => {
       const r1 = seeded(i + 1);
       const r2 = seeded(i + 101);
       const r3 = seeded(i + 251);

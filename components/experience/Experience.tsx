@@ -94,7 +94,9 @@ export default function Experience() {
   const shattering = phase === "eruption";
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden bg-black">
+    // 100dvh, not 100vh: on mobile browsers 100vh includes the address bar, so
+    // vh crops the bottom of the frame and shifts as the chrome hides.
+    <main className="relative h-[100dvh] w-full overflow-hidden bg-black">
       {/* warm glow radiating from the heart */}
       <div
         className="pointer-events-none fixed inset-0 transition-opacity duration-[1500ms] ease-out"

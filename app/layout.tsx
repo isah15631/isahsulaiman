@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -20,6 +20,14 @@ const sans = Inter({
 export const metadata: Metadata = {
   title: "The Dormant Heart",
   description: "A quiet cinematic story by Isah Sulaiman.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#000000",
+  // Zoom stays available — the experience is tap-driven, but pinch-to-zoom is
+  // someone's accessibility tool and shouldn't be taken away.
 };
 
 export default function RootLayout({

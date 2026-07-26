@@ -69,7 +69,7 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
   const isFirst = index === 0;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center">
+    <div className="fixed inset-0 z-40 flex items-center justify-center px-6">
       <AnimatePresence mode="wait">
         {current && (
           <motion.div
@@ -90,7 +90,7 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
                 : { duration: 1.3, ease: "easeInOut" }
             }
           >
-            <span className="font-serif text-4xl font-light tracking-wide text-neutral-100 md:text-6xl">
+            <span className="block whitespace-nowrap text-center font-serif text-[7.5vw] font-light leading-tight tracking-wide text-neutral-100 sm:text-4xl md:text-6xl">
               {current.text}
             </span>
 
