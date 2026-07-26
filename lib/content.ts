@@ -17,7 +17,7 @@ export const ABOUT = {
   photo: "/assets/isah-hero.png",
   name: "Isah Sulaiman",
   role: "Full-Stack Developer & AI Enthusiast",
-  bio: "I build software that most people never see: educational institutions, cooperatives, clinics, agribusinesses and shopfronts. Whatever problem someone has, I tailor a solution that solves it for them beautifully.",
+  bio: "Honestly, all there is to know is that I am really passionate about building solutions.",
   socials: [
     { label: "Email", href: "mailto:isah15631@gmail.com" },
     { label: "GitHub", href: "https://github.com/isah15631" },

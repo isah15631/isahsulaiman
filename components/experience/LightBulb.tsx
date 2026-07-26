@@ -74,6 +74,17 @@ export default function LightBulb({ on, onToggle }: Props) {
           {on && (
             <circle cx="38" cy="50" r="15" fill="rgba(255,190,110,0.28)" />
           )}
+          {/* A short arm off the socket ending in a lug. The chain hangs from
+              the lug, which puts it clear of the glass (widest at x=60) instead
+              of cutting across the bulb, and still reads as part of the
+              fixture rather than floating beside it. */}
+          <path
+            d="M46 19 L62.5 28.5"
+            stroke="rgba(196,190,180,0.7)"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <circle cx="64" cy="29.5" r="2.3" fill="rgba(196,190,180,0.8)" />
         </svg>
 
         {/* pull chain — the thing you actually click */}
@@ -85,35 +96,44 @@ export default function LightBulb({ on, onToggle }: Props) {
           }}
           aria-label={on ? "Turn the light off" : "Turn the light on"}
           aria-pressed={on}
-          className="pointer-events-auto group absolute -right-1 top-[calc(clamp(56px,12vh,130px)+52px)] flex cursor-pointer flex-col items-center p-3"
+          // Hangs from the socket lug at (64, 29.5) in the svg's viewBox. The
+          // svg is a fixed 76px wide, and p-3 adds 12px, hence these offsets.
+          className="pointer-events-auto group absolute left-[52px] top-[calc(clamp(56px,12vh,130px)+18px)] flex cursor-pointer flex-col items-center p-3"
         >
-          <motion.span
-            className="block w-px"
-            style={{
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0.50), rgba(255,255,255,0.26))",
-            }}
-            animate={{ height: 34 }}
-            whileHover={{ height: 40 }}
-            whileTap={{ height: 50 }}
-            transition={{ type: "spring", stiffness: 320, damping: 18 }}
-          />
-          <motion.span
-            className="block h-[7px] w-[7px] rounded-full"
-            style={{ background: "rgba(226,220,208,0.75)" }}
-            whileHover={{ scale: 1.25 }}
-            whileTap={{ scale: 0.9 }}
-            transition={{ type: "spring", stiffness: 320, damping: 18 }}
-          />
-          {/* a breathing hint, only while the room is dark */}
-          {!on && (
+          <span className="flex flex-col items-center">
             <motion.span
-              className="pointer-events-none absolute -bottom-1 h-3 w-3 rounded-full"
-              style={{ background: "rgba(242,181,68,0.5)" }}
-              animate={{ opacity: [0, 0.55, 0], scale: [0.6, 1.9, 0.6] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+              className="block w-px"
+              style={{
+                background:
+                  "linear-gradient(to bottom, rgba(255,255,255,0.50), rgba(255,255,255,0.26))",
+              }}
+              animate={{ height: 40 }}
+              whileHover={{ height: 46 }}
+              whileTap={{ height: 56 }}
+              transition={{ type: "spring", stiffness: 320, damping: 18 }}
             />
-          )}
+            <motion.span
+              className="relative block h-[7px] w-[7px] rounded-full"
+              style={{ background: "rgba(226,220,208,0.75)" }}
+              whileHover={{ scale: 1.25 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: "spring", stiffness: 320, damping: 18 }}
+            >
+              {/* a breathing hint, only while the room is dark */}
+              {!on && (
+                <motion.span
+                  className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                  style={{ background: "rgba(242,181,68,0.5)" }}
+                  animate={{ opacity: [0, 0.55, 0], scale: [0.6, 1.9, 0.6] }}
+                  transition={{
+                    duration: 2.8,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+              )}
+            </motion.span>
+          </span>
         </button>
 
         {/* The light it throws down over the menu.

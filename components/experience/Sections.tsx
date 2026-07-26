@@ -2,9 +2,9 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
-import Image from "next/image";
 import { ABOUT, PROJECTS, EXPERIMENTS, CONTACT, STACK } from "@/lib/content";
 import LightBulb from "./LightBulb";
+import PortraitAssembly from "./PortraitAssembly";
 
 type SectionKey = "about" | "projects" | "experiments" | "contact";
 const MENU: { key: SectionKey; label: string }[] = [
@@ -145,18 +145,11 @@ function About() {
               maskImage:
                 "linear-gradient(to bottom, #000 58%, rgba(0,0,0,0.55) 82%, transparent 100%)",
             }}
-            initial={{ opacity: 0, filter: "grayscale(1) brightness(0.7)" }}
-            animate={{ opacity: 1, filter: "grayscale(0) brightness(1)" }}
-            transition={{ duration: 1.8, ease: "easeOut", delay: 0.2 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
           >
-            <Image
-              src={ABOUT.photo}
-              alt={ABOUT.name}
-              fill
-              sizes="(max-width: 768px) 78vw, 180px"
-              priority
-              className="object-cover object-top"
-            />
+            <PortraitAssembly src={ABOUT.photo} alt={ABOUT.name} />
           </motion.div>
         </div>
         <div className="font-sans text-[15px] leading-relaxed text-neutral-300">
