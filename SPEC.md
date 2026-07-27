@@ -63,7 +63,7 @@ The intro is a **five-tap** sequence on the heart, then a silent welcome, then E
 - Completely **black** background.
 - No navigation, no buttons, no music, no ambient sound.
 - One word only, on screen.
-- Centre: a **highly realistic anatomical human heart**, **stone-like**,
+- Centre: a **highly realistic anatomical human heart**, **glass**,
   **100% grayscale/desaturated**, **no pulse, no glow, no movement**.
 - Beneath the heart, the word:
 
@@ -73,7 +73,7 @@ The intro is a **five-tap** sequence on the heart, then a silent welcome, then E
 - The user must tap **directly on the heart**.
 
 ### Stage 2 — First Awakening (1st tap)
-- Trigger: subtle **stone-cracking** sound + a **very soft heartbeat** begins.
+- Trigger: a **glass-cracking** sound + a **very soft heartbeat** begins.
 - A small **crack** appears across the heart.
 - A faint **warm glow** visible inside the crack.
 - ~**20%** of the heart regains colour.
@@ -85,13 +85,13 @@ The intro is a **five-tap** sequence on the heart, then a silent welcome, then E
 - Heartbeat becomes **slightly stronger**.
 - More colour returns.
 - Light begins **escaping** from within.
-- The stone exterior slowly weakens.
+- The glass slowly gives way.
 - **No** explanatory text, **no** buttons, **no** percentages shown to user. Stay subtle.
 
 ### Stage 4 — Vitality (3rd tap)
 - Heart begins **gently pulsing**.
 - **Warm light** fills its interior.
-- Small **particles of stone** slowly fall away.
+- Small **particles of glass** slowly fall away.
 - Surrounding darkness begins reacting **softly** to the heartbeat.
 - Background stays **mostly black**.
 - **No** background effects, **no** floating UI elements.
@@ -105,7 +105,7 @@ The intro is a **five-tap** sequence on the heart, then a silent welcome, then E
 
 ### Stage 6 — The Butterfly Eruption (5th tap)
 - The heart **completely shatters**.
-- Stone pieces gently fly **outward**.
+- Glass shards gently fly **outward**.
 - **Hundreds of butterflies** emerge **naturally** — organic, graceful, **not chaotic**.
 - Butterfly colours may include: **Crimson · Gold · Emerald · Cyan · White · Purple**.
 - Butterflies **fly across the screen**, **carry colour back into the world**,
@@ -208,5 +208,10 @@ The intro is a **five-tap** sequence on the heart, then a silent welcome, then E
   are **TBD** and to be supplied by Isah.
 
 ---
+
+> **Material change.** The heart was originally specified as stone. It is
+> glass, changed at Isah's request once he supplied real glass-cracking and
+> shattering recordings. A fracture in glass catches light and reads bright,
+> where a fissure in stone read dark, which inverts how the cracks are shaded.
 
 *Above all else: Less is more.*

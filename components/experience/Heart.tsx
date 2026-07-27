@@ -162,12 +162,14 @@ const fragmentShader = /* glsl */ `
     if(uShatter > 0.0001){
       float tone = snoise(vPos * 1.8) * 0.5 + 0.5;
 
-      // Read as STONE breaking, not warm confetti: mostly grey rock with the
-      // heart's light caught on the broken edges.
-      vec3 rock = vec3(0.30, 0.285, 0.265) * (0.75 + 0.5 * tone);
-      vec3 lit = mix(vec3(1.0, 0.30, 0.16), vec3(1.0, 0.74, 0.32), tone);
-      vec3 c = mix(rock, lit, 0.28);
-      c += vec3(1.0, 0.5, 0.25) * fres * 0.5 * (0.6 + uPulse * 0.4);
+      // Read as GLASS breaking: a dark cool shard, a hard bright edge where it
+      // catches the light, and the heart's warmth still burning through it.
+      vec3 shard = vec3(0.09, 0.12, 0.16) * (0.7 + 0.6 * tone);
+      shard += vec3(0.55, 0.68, 0.85) * fres * 1.05;
+      vec3 lit = mix(vec3(1.0, 0.34, 0.16), vec3(1.0, 0.76, 0.34), tone);
+      vec3 c = mix(shard, lit, 0.42);
+      c += vec3(1.0) * pow(fres, 3.0) * 0.55;
+      c += vec3(1.0, 0.55, 0.28) * 0.22 * (0.6 + uPulse * 0.4);
 
       // Fade per CHUNK, so a slab dissolves as a whole rather than eroding
       // unevenly across its own faces.
@@ -212,30 +214,47 @@ const fragmentShader = /* glsl */ `
     float ridge = (smoothstep(seamW, seamW * 1.5, seam) *
                    (1.0 - smoothstep(seamW * 1.5, seamW * 2.6, seam))) * opened;
 
-    // stone — desaturated grey, cool rim
-    vec3 stone = vec3(0.26 + 0.15 * grain) + fres * 0.14;
+    // ---- glass ----
+    // Against a black page, transparency would only read as dimness, so the
+    // body stays opaque and the glass is carried by its rim and its highlights
+    // instead: a dark cool interior, a bright cold edge, and a hard specular
+    // glint off a polished surface.
+    vec3 body = vec3(0.055, 0.075, 0.098);
+    // a broad wash so the form is legible, then a tight bright edge on top
+    body += vec3(0.30, 0.40, 0.52) * pow(fres, 0.6) * 0.32;
+    body += vec3(0.62, 0.78, 0.95) * fres * 1.15;
+    body += vec3(0.10, 0.13, 0.16) * (grain * 0.5 + 0.5) * 0.30;
+
+    // one tight glint and one softer sheen, so it looks polished rather than matte
+    vec3 L = normalize(vec3(0.42, 0.68, 0.60));
+    float ndl = max(dot(nrm, L), 0.0);
+    body += vec3(1.0, 0.99, 0.96) * pow(ndl, 42.0) * 0.95;
+    body += vec3(0.55, 0.68, 0.85) * pow(ndl, 7.0) * 0.22;
 
     // living — warm core to gold
-    vec3 living = mix(vec3(1.0, 0.30, 0.16), vec3(1.0, 0.74, 0.32), plate);
+    vec3 living = mix(vec3(1.0, 0.34, 0.16), vec3(1.0, 0.76, 0.34), plate);
 
-    // The light lives INSIDE the fissures, and the surface stays stone until
-    // late. Filling each plate with flat colour reads as paint on a pebble;
-    // rock with something burning behind it glows out of its cracks and only
-    // spills a little onto the stone around them.
+    // The warmth lives behind the glass and comes out through the fractures,
+    // flooding the interior only in the last stages.
     float channel = (1.0 - smoothstep(0.0, seamW, seam)) * opened;
     float spill = (1.0 - smoothstep(0.0, seamW * 4.5, seam)) * opened;
-    // only in the last stages does the interior itself flood with light
     float flood = opened * smoothstep(0.58, 1.0, uAwaken);
     float pulse = 1.0 + uPulse * 0.9;
 
-    vec3 col = stone;
-    col = mix(col, vec3(0.015, 0.012, 0.010), lip * 0.85);  // dark fissure walls
-    col += vec3(0.55, 0.52, 0.48) * ridge * 0.30;           // lit broken edge
-    col = mix(col, living * 0.85, clamp(flood * 0.8, 0.0, 1.0));
+    vec3 col = body;
 
-    col += living * channel * (0.55 + 0.85 * uAwaken) * pulse;   // light from within
-    col += living * core * (0.35 + 0.6 * uAwaken) * pulse;       // hottest centre
-    col += living * spill * (0.08 + 0.26 * uAwaken) * pulse;     // spill onto stone
+    // A fracture in glass catches light along its faces, so it goes BRIGHT.
+    // That is the whole difference from the stone, where the same seam was a
+    // dark fissure with light escaping from behind it.
+    col += vec3(0.80, 0.88, 1.00) * lip * 0.55;
+    col += vec3(1.00, 1.00, 1.00) * core * (0.85 - 0.35 * uAwaken);
+    col += vec3(0.75, 0.85, 1.00) * ridge * 0.55;
+
+    // then warmth builds behind it and takes the fractures over
+    col = mix(col, living * 0.9, clamp(flood * 0.85, 0.0, 1.0));
+    col += living * channel * (0.45 + 0.90 * uAwaken) * pulse;
+    col += living * core * (0.20 + 0.90 * uAwaken) * pulse;
+    col += living * spill * (0.10 + 0.30 * uAwaken) * pulse;
 
     // warm rim once it is properly alight
     col += vec3(1.0, 0.5, 0.25) * fres * 0.45 * flood;

@@ -21,8 +21,10 @@ function init() {
     volume: 0,
     rate: 0.72,
   });
-  crackSound = new Howl({ src: ["/audio/crack.wav"], volume: 0.7 });
-  shatterSound = new Howl({ src: ["/audio/shatter.wav"], volume: 0.85 });
+  // Real recordings, not synthesised: the heart is glass, and my stone knocks
+  // never sounded like anything breaking.
+  crackSound = new Howl({ src: ["/audio/glass-crack.mp3"], volume: 0.8 });
+  shatterSound = new Howl({ src: ["/audio/glass-shatter.mp3"], volume: 0.9 });
   chimeSound = new Howl({ src: ["/audio/chime.wav"], volume: 0.6 });
   swellSound = new Howl({ src: ["/audio/swell.wav"], volume: 0.6 });
   clickSound = new Howl({ src: ["/audio/click.wav"], volume: 0.35 });

@@ -55,8 +55,8 @@ const fragmentShader = /* glsl */ `
     float d = length(gl_PointCoord - vec2(0.5));
     float a = (1.0 - smoothstep(0.22, 0.5, d)) * vAlpha;
     if(a < 0.01) discard;
-    // grey stone, faintly warmed by the light it is falling away from
-    gl_FragColor = vec4(vec3(0.54, 0.505, 0.465), a * 0.9);
+    // glass dust: cool and bright, catching the light it is falling away from
+    gl_FragColor = vec4(vec3(0.74, 0.82, 0.92), a * 0.85);
   }
 `;
 

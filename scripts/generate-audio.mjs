@@ -199,8 +199,10 @@ function swell() {
 
 console.log("Generating soundscape →", OUT);
 save("heartbeat.wav", heartbeat());
-save("crack.wav", crack());
-save("shatter.wav", shatter());
+// crack() and shatter() are no longer emitted. The heart is glass now, and it
+// uses real recordings: glass-crack.mp3 and glass-shatter.mp3. The synths are
+// kept above for reference, and because they are how the rest of the
+// soundscape was made.
 save("chime.wav", chime());
 save("click.wav", click());
 save("swell.wav", swell());
