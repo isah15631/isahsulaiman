@@ -28,6 +28,23 @@ function lowpass(data, cutoff) {
   return data;
 }
 
+// The matching one-pole high-pass — used to keep noise out of the sub-bass,
+// where a phone cannot reproduce it and it only muddies the low tone.
+function highpass(data, cutoff) {
+  const dt = 1 / SR;
+  const rc = 1 / (2 * Math.PI * cutoff);
+  const alpha = rc / (rc + dt);
+  let prevIn = 0;
+  let prevOut = 0;
+  for (let i = 0; i < data.length; i++) {
+    const x = data[i];
+    prevOut = alpha * (prevOut + x - prevIn);
+    prevIn = x;
+    data[i] = prevOut;
+  }
+  return data;
+}
+
 function normalize(data, peak = 0.9) {
   let max = 0;
   for (const v of data) max = Math.max(max, Math.abs(v));
@@ -62,21 +79,67 @@ function encodeWav(float32) {
   return buf;
 }
 
+// Pass a name fragment to rewrite only that file — the noise-based sounds come
+// out slightly different every run, so there is no reason to churn the ones
+// you are not working on.
+const only = process.argv[2];
+
 function save(name, data) {
+  if (only && !name.includes(only)) return;
   writeFileSync(join(OUT, name), encodeWav(data));
   console.log("  ✓", name, `(${(data.length / SR).toFixed(2)}s)`);
 }
 
 // A single low thump — the muscle contraction of a heartbeat.
+//
+// Not a bare sine. A 62 Hz tone played back at rate 0.72 sits around 45 Hz,
+// which a phone speaker cannot move air at — the beat was simply missing on
+// iOS. Given 2f, 3f, 4f instead, the ear reconstructs the missing fundamental
+// and still hears it as low, while there is something up the band for a small
+// speaker to actually reproduce.
 function thump(data, start, freq, amp, decay) {
   const s = Math.floor(start * SR);
+  // The fundamental is held back deliberately. It is a big slow wave that eats
+  // the peak headroom without being reproducible on most speakers, so giving
+  // some of it to the harmonics costs almost nothing where the low end is
+  // audible and buys several dB where it is not.
+  const partials = [
+    [1, 0.62],
+    [2, 0.45],
+    [3, 0.28],
+    [4, 0.16],
+    [5, 0.1],
+    [7, 0.05],
+  ];
   for (let i = 0; i < data.length - s; i++) {
     const t = i / SR;
     const env = Math.exp(-t * decay);
     if (env < 0.0005) break;
     // pitch drops slightly as it decays — gives it a "body" feel
     const f = freq * (1 - 0.3 * (1 - env));
-    data[s + i] += Math.sin(2 * Math.PI * f * t) * amp * env;
+    let v = 0;
+    // the upper partials die first, so it is bright at the strike and warm after
+    for (const [m, a] of partials) {
+      v += Math.sin(2 * Math.PI * f * m * t) * a * Math.exp(-t * decay * (m - 1) * 0.6);
+    }
+    data[s + i] += v * amp * env * 0.62;
+  }
+}
+
+// The soft slap of a valve closing — a brief band-limited noise burst. This is
+// the part of a heartbeat a handset can carry; the tone underneath is what
+// makes it a heart rather than a knock.
+function thud(data, start, amp, decay, lo, hi) {
+  const len = Math.floor(0.12 * SR);
+  const n = new Float32Array(len);
+  for (let i = 0; i < len; i++) n[i] = Math.random() * 2 - 1;
+  lowpass(n, hi);
+  highpass(n, lo);
+  const s = Math.floor(start * SR);
+  for (let i = 0; i < len && s + i < data.length; i++) {
+    const t = i / SR;
+    const env = Math.exp(-t * decay) * (t < 0.002 ? t / 0.002 : 1);
+    data[s + i] += n[i] * env * amp;
   }
 }
 
@@ -84,7 +147,9 @@ function thump(data, start, freq, amp, decay) {
 function heartbeat() {
   const d = buffer(1.1);
   thump(d, 0.0, 62, 0.9, 22); // lub
+  thud(d, 0.0, 0.44, 55, 220, 1700); // ...and the slap that carries it on a phone
   thump(d, 0.22, 55, 0.6, 26); // dub (softer)
+  thud(d, 0.22, 0.29, 65, 220, 1500);
   return normalize(d, 0.85);
 }
 
