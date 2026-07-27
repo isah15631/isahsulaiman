@@ -21,9 +21,17 @@ const RELEASE_AT = LIFT_DELAY + LIFT_SECONDS + 0.55;
 const TOTAL = RELEASE_AT + 1.9;
 
 /**
- * One of the two butterflies carrying the word up, with the thread it holds it
- * by. The thread hangs from the butterfly down to the top of the word; when the
- * butterfly lets go it goes slack and fades, and only the butterfly flies on.
+ * One of the two butterflies carrying the word, and the thread it holds it by.
+ *
+ * The thread is anchored by its BOTTOM, at a point just inside the letterforms,
+ * and the butterfly hangs above it. Anchoring the other way round (hanging a
+ * fixed-length thread down off the butterfly) left the loose end wherever the
+ * arithmetic happened to put it, which drifted with every breakpoint, and the
+ * lean rotated it further off the word. Rotating about the bottom instead means
+ * the point of contact cannot move: the string is tied to the word and the
+ * butterfly swings from it.
+ *
+ * Offsets are in `em` so they track the word at every text size.
  */
 function Carrier({
   color,
@@ -31,21 +39,28 @@ function Carrier({
   flap,
   away,
   tilt,
-  threadLength,
-  className,
+  threadEm,
+  side,
+  insetEm,
 }: {
   color: string;
   size: number;
   flap: number;
   away: { x: number; y: number };
-  /** degrees — leans the thread in toward the word */
+  /** degrees the butterfly leans away from its anchor */
   tilt: number;
-  threadLength: number;
-  className: string;
+  /** thread length, in em of the word */
+  threadEm: number;
+  side: "left" | "right";
+  /** how far in from that edge the thread grips the word, in em */
+  insetEm: number;
 }) {
   return (
     <motion.div
-      className={`pointer-events-none absolute ${className}`}
+      className="pointer-events-none absolute"
+      // 0.26em down from the top of the line box lands on the letterforms
+      // themselves rather than in the ascender space above them.
+      style={{ top: "0.26em", [side]: `${insetEm}em` }}
       initial={{ x: 0, y: 0, opacity: 0 }}
       animate={{
         // fade in with the lift, hold while carrying, then drift away
@@ -65,24 +80,39 @@ function Carrier({
         ],
       }}
     >
-      <Butterfly color={color} size={size} flapDuration={flap} />
-
-      {/* the thread it carries the word by — taut while lifting, gone once released */}
-      <motion.span
-        className="absolute left-1/2 top-full block w-px origin-top"
+      {/* Grows upward from the anchor. Plain CSS transform, not a motion prop:
+          Framer writes its own inline transform and would wipe out a Tailwind
+          translate class on the same element. */}
+      <div
+        className="absolute bottom-0 left-0 flex flex-col items-center"
         style={{
-          height: threadLength,
-          background:
-            "linear-gradient(to bottom, rgba(245,242,236,0.55), rgba(245,242,236,0.12))",
+          transform: `translateX(-50%) rotate(${tilt}deg)`,
+          transformOrigin: "50% 100%",
         }}
-        initial={{ opacity: 0, rotate: tilt, scaleY: 0.7 }}
-        animate={{ opacity: [0, 0.9, 0.9, 0], scaleY: [0.7, 1, 1, 1] }}
-        transition={{
-          duration: TOTAL,
-          ease: "easeInOut",
-          times: [0, LIFT_DELAY / TOTAL, RELEASE_AT / TOTAL, (RELEASE_AT + 0.5) / TOTAL],
-        }}
-      />
+      >
+        <Butterfly color={color} size={size} flapDuration={flap} />
+        <motion.span
+          className="block w-px"
+          style={{
+            height: `${threadEm}em`,
+            background:
+              "linear-gradient(to bottom, rgba(245,242,236,0.20), rgba(245,242,236,0.70))",
+          }}
+          initial={{ opacity: 0 }}
+          // gone by the moment of release, so it is never seen detaching
+          animate={{ opacity: [0, 0.95, 0.95, 0] }}
+          transition={{
+            duration: TOTAL,
+            ease: "easeInOut",
+            times: [
+              0,
+              LIFT_DELAY / TOTAL,
+              (RELEASE_AT - 0.2) / TOTAL,
+              RELEASE_AT / TOTAL,
+            ],
+          }}
+        />
+      </div>
     </motion.div>
   );
 }
@@ -108,7 +138,10 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
         {current && (
           <motion.div
             key={index}
-            className="relative"
+            // The text size lives here, not only on the span, so the carriers'
+            // em-based offsets resolve against the word rather than the 16px
+            // root and stay glued to it at every breakpoint.
+            className="relative font-serif text-[7.5vw] leading-tight sm:text-4xl md:text-6xl"
             // The first line is dragged upward into place; the rest simply breathe in.
             initial={isFirst ? { opacity: 0, y: 104 } : { opacity: 0, y: 6 }}
             animate={
@@ -124,7 +157,7 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
                 : { duration: 1.3, ease: "easeInOut" }
             }
           >
-            <span className="block whitespace-nowrap text-center font-serif text-[7.5vw] font-light leading-tight tracking-wide text-neutral-100 sm:text-4xl md:text-6xl">
+            <span className="block whitespace-nowrap text-center font-light tracking-wide text-neutral-100">
               {current.text}
             </span>
 
@@ -132,22 +165,25 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
                 the transformation is over, but beauty remains. */}
             {isFirst && (
               <>
+                {/* gripping the h, and the o near the end */}
                 <Carrier
-                  className="-top-12 left-2 md:-top-16"
+                  side="left"
+                  insetEm={0.42}
                   color="#f2b544"
                   size={22}
                   flap={0.26}
-                  tilt={14}
-                  threadLength={30}
+                  tilt={-13}
+                  threadEm={0.8}
                   away={{ x: -150, y: -110 }}
                 />
                 <Carrier
-                  className="-top-14 right-2 md:-top-[4.5rem]"
+                  side="right"
+                  insetEm={0.62}
                   color="#f7f3ea"
                   size={20}
                   flap={0.31}
-                  tilt={-14}
-                  threadLength={36}
+                  tilt={13}
+                  threadEm={1.0}
                   away={{ x: 160, y: -128 }}
                 />
               </>
