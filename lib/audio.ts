@@ -5,7 +5,6 @@ import { Howl, Howler } from "howler";
 let heartbeat: Howl | null = null;
 let crackSound: Howl | null = null;
 let shatterSound: Howl | null = null;
-let chimeSound: Howl | null = null;
 let swellSound: Howl | null = null;
 let clickSound: Howl | null = null;
 let initialised = false;
@@ -25,7 +24,6 @@ function init() {
   // never sounded like anything breaking.
   crackSound = new Howl({ src: ["/audio/glass-crack.mp3"], volume: 0.8 });
   shatterSound = new Howl({ src: ["/audio/glass-shatter.mp3"], volume: 0.9 });
-  chimeSound = new Howl({ src: ["/audio/chime.wav"], volume: 0.6 });
   swellSound = new Howl({ src: ["/audio/swell.wav"], volume: 0.6 });
   clickSound = new Howl({ src: ["/audio/click.wav"], volume: 0.35 });
 }
@@ -66,10 +64,6 @@ export function playCrack() {
 
 export function playShatter() {
   shatterSound?.play();
-}
-
-export function playChime() {
-  chimeSound?.play();
 }
 
 /** The pull-chain on the bulb. Self-initialises: by the time anyone reaches

@@ -10,7 +10,6 @@ import {
   playCrack,
   playShatter,
   playSwell,
-  playChime,
   stopHeartbeat,
 } from "@/lib/audio";
 import Butterflies from "./Butterflies";
@@ -60,7 +59,8 @@ export default function Experience() {
       playSwell();
       setWorld(1); // the darkness becomes a warm, beautiful environment
     });
-    after(900, () => playChime());
+    // Nothing else. The break and the swell carry the moment between them; a
+    // third sound on top read as a game pickup.
 
     // butterflies leave → return to stillness
     after(7200, () => {

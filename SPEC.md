@@ -111,7 +111,12 @@ The intro is a **five-tap** sequence on the heart, then a silent welcome, then E
 - Butterflies **fly across the screen**, **carry colour back into the world**,
   and **slowly illuminate the darkness**.
 - The black canvas **gradually transforms into a warm, beautiful environment**.
-- **Music:** a soft **orchestral swell** + **gentle chimes**. Nothing loud/dramatic.
+- **Music:** the **breaking glass**, then a soft **orchestral swell**. Nothing
+  loud/dramatic, and **nothing else on top**.
+
+  > Supersedes the original brief's "orchestral swell + gentle chimes". The
+  > chime was a bell pair that landed like a game pickup over the shatter.
+  > Removed at Isah's request; the break and the swell carry the moment.
 - **No** counters, **no** butterfly count mentioned, **no** physics controls.
 - This is **not** a butterfly simulator — it is a **cinematic moment**. Magical, not spectacular.
 

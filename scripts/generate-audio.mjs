@@ -203,7 +203,8 @@ save("heartbeat.wav", heartbeat());
 // uses real recordings: glass-crack.mp3 and glass-shatter.mp3. The synths are
 // kept above for reference, and because they are how the rest of the
 // soundscape was made.
-save("chime.wav", chime());
+// chime() is no longer emitted. It was a bell pair at 880 and 1175 Hz, which
+// landed like a game pickup over the shatter. Kept above for reference only.
 save("click.wav", click());
 save("swell.wav", swell());
 console.log("Done.");
