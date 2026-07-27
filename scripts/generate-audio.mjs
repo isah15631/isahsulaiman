@@ -90,27 +90,58 @@ function save(name, data) {
   console.log("  ✓", name, `(${(data.length / SR).toFixed(2)}s)`);
 }
 
-// A single low thump — the muscle contraction of a heartbeat.
+// Two mixes of the same beat, because one file cannot serve both.
 //
-// Not a bare sine. A 62 Hz tone played back at rate 0.72 sits around 45 Hz,
-// which a phone speaker cannot move air at — the beat was simply missing on
-// iOS. Given 2f, 3f, 4f instead, the ear reconstructs the missing fundamental
-// and still hears it as low, while there is something up the band for a small
-// speaker to actually reproduce.
-function thump(data, start, freq, amp, decay) {
+// A real heart sound is almost entirely sub-bass, and a handset speaker moves
+// almost no air down there — which is why the beat was missing on iOS while
+// the broadband glass recordings came through fine.
+//
+// The plain mix is the sound as it should be: essentially the bare sine it
+// always was, plus a quiet 2nd and 3rd dying faster than the fundamental,
+// which is roughly how a real heart sound is built.
+//
+// The phone mix carries the same beat on harmonics instead. Through real
+// speakers it is a pitched buzz — you hear the fundamental fighting its own
+// overtones, and it stops being a heart. Through a phone the hardware filters
+// that fundamental away and only the overtones arrive, and they land as a
+// thump. So it is only ever served to the device it was built for.
+const MIX = {
+  plain: {
+    // [multiple, level, how much faster than the fundamental it dies]
+    partials: [
+      [1, 1.0, 0],
+      [2, 0.2, 0.9],
+      [3, 0.08, 1.8],
+    ],
+    gain: 0.86,
+    // dark and quiet — felt under the tone rather than heard
+    valve: [
+      { amp: 0.11, decay: 60, lo: 130, hi: 620 },
+      { amp: 0.075, decay: 70, lo: 130, hi: 560 },
+    ],
+  },
+  phone: {
+    partials: [
+      [1, 0.62, 0],
+      [2, 0.45, 0.6],
+      [3, 0.28, 1.2],
+      [4, 0.16, 1.8],
+      [5, 0.1, 2.4],
+      [7, 0.05, 3.6],
+    ],
+    // the fundamental is held back: it is a big slow wave that eats the peak
+    // headroom without ever reaching the ear on the device this is for
+    gain: 0.62,
+    valve: [
+      { amp: 0.44, decay: 55, lo: 220, hi: 1700 },
+      { amp: 0.29, decay: 65, lo: 220, hi: 1500 },
+    ],
+  },
+};
+
+// A single low thump — the muscle contraction of a heartbeat.
+function thump(data, start, freq, amp, decay, mix) {
   const s = Math.floor(start * SR);
-  // The fundamental is held back deliberately. It is a big slow wave that eats
-  // the peak headroom without being reproducible on most speakers, so giving
-  // some of it to the harmonics costs almost nothing where the low end is
-  // audible and buys several dB where it is not.
-  const partials = [
-    [1, 0.62],
-    [2, 0.45],
-    [3, 0.28],
-    [4, 0.16],
-    [5, 0.1],
-    [7, 0.05],
-  ];
   for (let i = 0; i < data.length - s; i++) {
     const t = i / SR;
     const env = Math.exp(-t * decay);
@@ -118,18 +149,17 @@ function thump(data, start, freq, amp, decay) {
     // pitch drops slightly as it decays — gives it a "body" feel
     const f = freq * (1 - 0.3 * (1 - env));
     let v = 0;
-    // the upper partials die first, so it is bright at the strike and warm after
-    for (const [m, a] of partials) {
-      v += Math.sin(2 * Math.PI * f * m * t) * a * Math.exp(-t * decay * (m - 1) * 0.6);
+    for (const [m, a, fade] of mix.partials) {
+      v += Math.sin(2 * Math.PI * f * m * t) * a * Math.exp(-t * decay * fade);
     }
-    data[s + i] += v * amp * env * 0.62;
+    data[s + i] += v * amp * env * mix.gain;
   }
 }
 
-// The soft slap of a valve closing — a brief band-limited noise burst. This is
-// the part of a heartbeat a handset can carry; the tone underneath is what
-// makes it a heart rather than a knock.
-function thud(data, start, amp, decay, lo, hi) {
+// The sound of a valve closing — a brief band-limited noise burst under the
+// tone. Dark and quiet in the plain mix; brighter and louder in the phone one,
+// where it is most of what actually survives the speaker.
+function thud(data, start, { amp, decay, lo, hi }) {
   const len = Math.floor(0.12 * SR);
   const n = new Float32Array(len);
   for (let i = 0; i < len; i++) n[i] = Math.random() * 2 - 1;
@@ -138,18 +168,18 @@ function thud(data, start, amp, decay, lo, hi) {
   const s = Math.floor(start * SR);
   for (let i = 0; i < len && s + i < data.length; i++) {
     const t = i / SR;
-    const env = Math.exp(-t * decay) * (t < 0.002 ? t / 0.002 : 1);
+    const env = Math.exp(-t * decay) * (t < 0.003 ? t / 0.003 : 1);
     data[s + i] += n[i] * env * amp;
   }
 }
 
 // ---- heartbeat: a soft lub-dub, room to breathe after ----
-function heartbeat() {
+function heartbeat(mix) {
   const d = buffer(1.1);
-  thump(d, 0.0, 62, 0.9, 22); // lub
-  thud(d, 0.0, 0.44, 55, 220, 1700); // ...and the slap that carries it on a phone
-  thump(d, 0.22, 55, 0.6, 26); // dub (softer)
-  thud(d, 0.22, 0.29, 65, 220, 1500);
+  thump(d, 0.0, 62, 0.9, 22, mix); // lub
+  thud(d, 0.0, mix.valve[0]);
+  thump(d, 0.22, 55, 0.6, 26, mix); // dub (softer)
+  thud(d, 0.22, mix.valve[1]);
   return normalize(d, 0.85);
 }
 
@@ -263,7 +293,8 @@ function swell() {
 }
 
 console.log("Generating soundscape →", OUT);
-save("heartbeat.wav", heartbeat());
+save("heartbeat.wav", heartbeat(MIX.plain));
+save("heartbeat-phone.wav", heartbeat(MIX.phone));
 // crack() and shatter() are no longer emitted. The heart is glass now, and it
 // uses real recordings: glass-crack.mp3 and glass-shatter.mp3. The synths are
 // kept above for reference, and because they are how the rest of the
