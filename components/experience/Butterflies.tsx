@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { ShardLaunch } from "@/lib/shards";
 
 // The eruption swarm, drawn on ONE 2D canvas.
+//
+// Nothing escapes from inside the heart. Every butterfly here IS a shard: the
+// 3D scene hands over each piece's screen position and velocity at the moment
+// it flares out, and one butterfly opens in its place, carrying that same
+// momentum before it settles into flight of its own.
 //
 // It used to be one animated SVG per butterfly. At this many of them the
 // browser had to re-rasterise every wing every frame, which is what made the
@@ -13,9 +19,12 @@ import { useEffect, useRef } from "react";
 // (three.js stays reserved for the heart; this is plain canvas 2D.)
 
 const COLORS = ["#c9304a", "#f2b544", "#2fa980", "#4fd1e0", "#f7f3ea", "#8b6bd1"];
-const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // even, non-clumping radial spread
 const FLAP_FRAMES = 7; // ping-ponged, so 12 distinct poses
 const SPRITE_PX = 56;
+/** How long the shard's momentum takes to bleed off into a butterfly's own flight. */
+const DAMP = 0.42;
+/** Slack around the frame — a butterfly born just outside still flies into view. */
+const EDGE = 60;
 
 // Wings drawn in a 100×100 design space with the body along x = 50.
 const FOREWING = "M50,44 C54,26 66,10 80,6 C92,3 97,14 94,28 C90,44 72,54 56,52 Z";
@@ -26,14 +35,25 @@ const BODY =
 type Spec = {
   color: number;
   size: number;
-  delay: number;
-  duration: number;
+  /** when the shard it came from turned, in seconds after the break */
+  born: number;
+  life: number;
   flapPeriod: number;
   flapOffset: number;
-  cx: number;
-  cy: number;
-  ex: number;
-  ey: number;
+  /** the shard's parting position and momentum */
+  x0: number;
+  y0: number;
+  vx: number;
+  vy: number;
+  /** its own cruise, once the throw has bled off */
+  fx: number;
+  fy: number;
+  /** lateral drift across the line of flight */
+  px: number;
+  py: number;
+  wander: number;
+  wanderW: number;
+  wanderPh: number;
 };
 
 function seeded(i: number) {
@@ -86,7 +106,7 @@ function makeSprite(color: string, wingScale: number, px: number) {
   return c;
 }
 
-export default function Butterflies({ count = 160 }: { count?: number }) {
+export default function Butterflies({ launch }: { launch: ShardLaunch }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -119,40 +139,52 @@ export default function Butterflies({ count = 160 }: { count?: number }) {
       })
     );
 
-    // A phone has a fraction of the screen area and a fraction of the GPU, so
-    // scale the swarm to the viewport rather than shipping a desktop-sized
-    // eruption to a 375px screen.
-    const areaRatio = (vw * vh) / (1280 * 720);
-    const n = Math.max(70, Math.round(count * Math.min(1, Math.max(0.5, areaRatio))));
-
-    const reach = Math.hypot(vw, vh) * 0.8;
-    const specs: Spec[] = Array.from({ length: n }, (_, i) => {
+    // One butterfly per shard, at that shard's own moment and heading.
+    const specs: Spec[] = launch.shards.map((sh, i) => {
       const r1 = seeded(i + 1);
       const r2 = seeded(i + 101);
       const r3 = seeded(i + 251);
-      const angle = i * GOLDEN + (r1 - 0.5) * 0.5;
-      const dist = reach * (0.5 + r2 * 0.55);
-      const ex = Math.cos(angle) * dist;
-      // gentle upward bias — they lift as they carry the colour away
-      const ey = Math.sin(angle) * dist - vh * 0.18;
-      const perp = (r3 - 0.5) * dist * 0.55;
-      return {
-        color: i % COLORS.length,
-        size: 15 + r1 * 19,
-        delay: r1 * 1.3,
-        duration: 4.2 + r3 * 2.4,
-        flapPeriod: 0.44 + r2 * 0.44,
-        flapOffset: r3,
-        cx: ex * 0.5 - Math.sin(angle) * perp,
-        cy: ey * 0.5 + Math.cos(angle) * perp,
-        ex,
-        ey,
-      };
-    });
 
-    const originX = vw * 0.5;
-    const originY = vh * 0.52;
-    const start = performance.now();
+      // It keeps going roughly the way it was thrown, but a wing has a mind of
+      // its own — so the heading bends, and the flight lifts.
+      const angle = Math.atan2(sh.vy, sh.vx) + (r1 - 0.5) * 0.85;
+      const cruise = 95 + r2 * 115;
+
+      return {
+        color: Math.min(COLORS.length - 1, Math.floor(sh.seed * COLORS.length)),
+        size: (16 + r1 * 17) * (0.78 + Math.min(1.6, sh.scale) * 0.3),
+        born: sh.t,
+        life: 4.4 + r3 * 2.3,
+        flapPeriod: 0.42 + r2 * 0.44,
+        flapOffset: r3,
+        x0: sh.x,
+        y0: sh.y,
+        vx: sh.vx,
+        vy: sh.vy,
+        fx: Math.cos(angle) * cruise,
+        fy: Math.sin(angle) * cruise - (60 + r1 * 85),
+        px: -Math.sin(angle),
+        py: Math.cos(angle),
+        wander: 16 + r2 * 26,
+        wanderW: 1.3 + r3 * 1.7,
+        wanderPh: r1 * Math.PI * 2,
+      };
+    })
+      // On a portrait phone the heart fills the width, so a fifth of the shards
+      // have crossed the edge by the time their moment comes. Their butterflies
+      // would be born outside the frame and fly further out — never seen, and
+      // never worth a sprite on the device that can least afford one.
+      // On whichever axis it is already off the frame, it has to be heading
+      // back in to be worth drawing.
+      .filter((s) => {
+        const okX =
+          s.x0 >= -EDGE && s.x0 <= vw + EDGE ? true : s.x0 < 0 ? s.fx > 0 : s.fx < 0;
+        const okY =
+          s.y0 >= -EDGE && s.y0 <= vh + EDGE ? true : s.y0 < 0 ? s.fy > 0 : s.fy < 0;
+        return okX && okY;
+      });
+
+    const start = launch.launchAt;
     let raf = 0;
 
     const draw = (nowMs: number) => {
@@ -163,26 +195,32 @@ export default function Butterflies({ count = 160 }: { count?: number }) {
       let alive = false;
       for (let i = 0; i < specs.length; i++) {
         const s = specs[i];
-        const p = (t - s.delay) / s.duration;
-        if (p <= 0 || p >= 1) {
-          if (p <= 0) alive = true; // still waiting to emerge
+        const age = t - s.born;
+        if (age <= 0 || age >= s.life) {
+          if (age <= 0) alive = true; // its shard is still in the air
           continue;
         }
         alive = true;
 
-        // quadratic Bézier from the heart, bowed for a graceful arc
-        const u = 1 - p;
-        const x = originX + 2 * u * p * s.cx + p * p * s.ex;
-        const y = originY + 2 * u * p * s.cy + p * p * s.ey;
+        // The throw bleeds off exponentially while the butterfly's own flight
+        // takes over, so the first moments still read as the shard's arc.
+        const e = Math.exp(-age / DAMP);
+        const carry = DAMP * (1 - e);
+        const ramp = Math.min(1, age / 0.5); // no wobble until the wings are open
+        const w = Math.sin(age * s.wanderW + s.wanderPh) * s.wander * ramp;
+        const x = s.x0 + s.vx * carry + s.fx * age + s.px * w;
+        const y = s.y0 + s.vy * carry + s.fy * age + s.py * w;
 
         // tangent → banking along the flight path
-        const dx = 2 * u * s.cx + 2 * p * (s.ex - s.cx);
-        const dy = 2 * u * s.cy + 2 * p * (s.ey - s.cy);
+        const wd = Math.cos(age * s.wanderW + s.wanderPh) * s.wander * s.wanderW * ramp;
+        const dx = s.vx * e + s.fx + s.px * wd;
+        const dy = s.vy * e + s.fy + s.py * wd;
         const rot = Math.atan2(dy, dx) + Math.PI / 2;
 
-        // appear, hold, then fade as they leave
-        const a = Math.min(1, p / 0.12) * Math.min(1, (1 - p) / 0.25);
-        const scale = 0.45 + Math.min(1, p / 0.15) * 0.55;
+        // open out of the flare, hold, then fade as they leave
+        const p = age / s.life;
+        const a = Math.min(1, age / 0.13) * Math.min(1, (1 - p) / 0.25);
+        const scale = 0.35 + Math.min(1, age / 0.24) * 0.65;
 
         // ping-ponged flap pose
         const cycle = ((t + s.flapOffset) / s.flapPeriod) % 2;
@@ -208,7 +246,7 @@ export default function Butterflies({ count = 160 }: { count?: number }) {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
-  }, [count]);
+  }, [launch]);
 
   return (
     <canvas

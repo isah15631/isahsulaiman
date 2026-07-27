@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { STAGES, FINAL_TAP, type Phase } from "@/lib/stages";
+import type { ShardLaunch } from "@/lib/shards";
 import {
   startAudio,
   setHeartbeat,
@@ -27,6 +28,9 @@ export default function Experience() {
   // Once the last fragment fades we drop the WebGL canvas entirely, so the
   // butterflies have the frame to themselves.
   const [heartGone, setHeartGone] = useState(false);
+  // Every shard of the broken heart, with the moment and the heading at which
+  // it turns into a butterfly. Handed over on the frame the heart breaks.
+  const [launch, setLaunch] = useState<ShardLaunch | null>(null);
 
   // refs mirror state so rapid taps accumulate synchronously (no stale closures)
   const tapsRef = useRef(0);
@@ -125,6 +129,7 @@ export default function Experience() {
             shattering={shattering}
             onTap={handleTap}
             onShatterDone={() => setHeartGone(true)}
+            onShardsLaunch={setLaunch}
           />
         </div>
       )}
@@ -155,8 +160,8 @@ export default function Experience() {
         )}
       </AnimatePresence>
 
-      {/* the eruption */}
-      {phase === "eruption" && <Butterflies count={140} />}
+      {/* the eruption — the shards themselves, once they turn */}
+      {phase === "eruption" && launch && <Butterflies launch={launch} />}
 
       {/* the whispered introduction */}
       {phase === "welcome" && (

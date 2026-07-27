@@ -34,6 +34,9 @@ function hash(x: number, y: number, z: number) {
   return n - Math.floor(n);
 }
 
+/** One rigid slab of the heart — a shard, once it breaks. */
+export type HeartChunk = { centre: THREE.Vector3; random: number };
+
 /**
  * Builds a plump heart as a non-indexed geometry, with per-face attributes
  * (`aCentroid`, `aRandom`) so the shatter shader can fling each face outward.
@@ -160,6 +163,15 @@ export function createHeartGeometry(detail = 96): THREE.BufferGeometry {
   geo.setAttribute("aRandom", new THREE.BufferAttribute(randoms, 1));
   geo.setAttribute("aChunkCentre", new THREE.BufferAttribute(chunkCentres, 3));
   geo.setAttribute("aChunkRandom", new THREE.BufferAttribute(chunkRandoms, 1));
+
+  // The same chunks the shader flings, readable from JS: the shatter is
+  // replayed on the CPU for a handful of frames so each piece can be projected
+  // to screen space and handed to the swarm as it turns into a butterfly.
+  const chunks: HeartChunk[] = [];
+  chunkCentre.forEach((centre, k) => {
+    chunks.push({ centre, random: chunkRandom.get(k)! });
+  });
+  geo.userData.chunks = chunks;
   geo.userData.chunkCount = cells.size;
   return geo;
 }

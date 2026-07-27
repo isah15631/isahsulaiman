@@ -4,6 +4,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import type { PerspectiveCamera } from "three";
 import { createHeartGeometry, sampleSurface } from "@/lib/heartGeometry";
+import type { ShardLaunch } from "@/lib/shards";
 import Heart from "./Heart";
 import StoneMotes from "./StoneMotes";
 
@@ -32,6 +33,7 @@ type HeartSceneProps = {
   shattering: boolean;
   onTap?: () => void;
   onShatterDone?: () => void;
+  onShardsLaunch?: (launch: ShardLaunch) => void;
 };
 
 function Contents(props: HeartSceneProps) {
