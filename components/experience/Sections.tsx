@@ -135,10 +135,12 @@ function SectionCord({ on, onToggle }: { on: boolean; onToggle: () => void }) {
       transition={{ duration: 0.5, delay: 0.35, ease: "easeOut" }}
     >
       <motion.span
-        className="block w-px"
+        className="block"
         style={{
-          background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.42))",
+          width: "1.5px",
+          backgroundColor: "rgba(255,255,255,0.28)",
+          backgroundImage:
+            "linear-gradient(to bottom, rgba(255,255,255,0.2), rgba(255,255,255,0.6))",
         }}
         animate={{ height: 52 }}
         whileHover={{ height: 60 }}

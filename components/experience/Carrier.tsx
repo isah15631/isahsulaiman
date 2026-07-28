@@ -112,12 +112,16 @@ export default function Carrier({
             since where a letter actually begins is the font's business and not
             something this can know. */}
         <motion.span
-          className="block w-px"
+          className="block"
           style={{
+            width: "1.5px",
             height: `${threadEm}em`,
             marginBottom: "-0.16em",
-            background:
-              "linear-gradient(to bottom, rgba(245,242,236,0.20), rgba(245,242,236,0.85))",
+            // Same reason as the lamp's cord: a 1px line at a fifth of white
+            // is not there on a handset.
+            backgroundColor: "rgba(245,242,236,0.4)",
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(245,242,236,0.34), rgba(245,242,236,0.92))",
           }}
           initial={{ opacity: 0 }}
           // gone by the moment of release, so it is never seen detaching
