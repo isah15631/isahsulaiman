@@ -3,8 +3,6 @@
 import {
   AnimatePresence,
   motion,
-  useMotionValue,
-  useTransform,
   type Variants,
 } from "framer-motion";
 import { useState } from "react";
@@ -13,7 +11,7 @@ import { SWARM } from "@/lib/palette";
 import { playClick } from "@/lib/audio";
 import Butterfly from "./Butterfly";
 import Carrier from "./Carrier";
-import LightBulb, { MAX_LEAN } from "./LightBulb";
+import LightBulb from "./LightBulb";
 import PortraitAssembly from "./PortraitAssembly";
 import RoomButterflies from "./RoomButterflies";
 
@@ -176,43 +174,23 @@ export default function Sections() {
   // Which way we are travelling: into a section, or back up to the menu.
   const [down, setDown] = useState(true);
 
-  // How far the lamp is leaning, written by the fixture every frame while it
-  // swings. Never React state: this changes at 60fps.
-  const lean = useMotionValue(0);
-  // Swing the lamp away and the words lose their light. The cone itself moves
-  // with the fixture, but the words are lit separately, so they have to be
-  // told about it.
+  // The lamp is overhead and it stays there, so this is a constant string and
+  // not a value derived from anything.
   //
-  // Two things at once, and the order of the filter chain is the whole trick.
+  // It used to be rebuilt from the fixture's lean on every frame of a swing.
+  // Two chained drop-shadows recomputed over live text sixty times a second is
+  // one of the more expensive things you can ask a browser for, and it was
+  // costing the whole room its frame rate. Held still it is free: painted once
+  // and cached.
   //
-  // First the words dim as the light leaves them. Then a warm glow on the side
-  // FACING the lamp, which is what you actually see when a light moves: not
-  // the shadow, the lit edge.
-  //
-  // Then the shadow, thrown the opposite way. On its own it would be invisible,
-  // because a dark shadow against a near-black page has nothing to fall on. It
-  // works here because the cone lays a warm wash down behind the menu, and
-  // that wash is the surface. Cast last, so it is thrown by the glowing text
-  // rather than the glow being smeared around the shadow.
-  const swept = useTransform(lean, (deg) => {
-    const r = (deg * Math.PI) / 180;
-    const off = Math.min(1, Math.abs(deg) / MAX_LEAN);
-    // toward the lamp
-    const gx = Math.sin(r) * 22;
-    const gy = 7 + off * 5;
-    const gBlur = 10 + off * 14;
-    // and away from it, longer and softer the further it leans
-    const sx = -Math.sin(r) * 34;
-    const sy = 9 + off * 9;
-    const sBlur = 5 + off * 9;
-    return (
-      `brightness(${(1 - off * 0.5).toFixed(3)}) ` +
-      `drop-shadow(${gx.toFixed(1)}px ${gy.toFixed(1)}px ${gBlur.toFixed(1)}px ` +
-      `rgba(255,176,96,${(0.5 - off * 0.22).toFixed(3)})) ` +
-      `drop-shadow(${sx.toFixed(1)}px ${sy.toFixed(1)}px ${sBlur.toFixed(1)}px ` +
-      `rgba(0,0,0,${(0.55 + off * 0.2).toFixed(3)}))`
-    );
-  });
+  // A warm glow just below the words, because the lamp is above them, and a
+  // shadow thrown the same way. The shadow only reads at all because the cone
+  // lays a wash down behind the menu for it to fall on; against the bare page
+  // it would be black on black. Cast second, so it is thrown by the already
+  // glowing text rather than the glow being smeared around the shadow.
+  const LIT =
+    "drop-shadow(0px 7px 10px rgba(255,176,96,0.5)) " +
+    "drop-shadow(0px 9px 5px rgba(0,0,0,0.55))";
 
   const open = (key: SectionKey) => {
     setDown(true);
@@ -275,7 +253,6 @@ export default function Sections() {
               <LightBulb
                 on={lightOn}
                 onToggle={() => setLightOn((v) => !v)}
-                lean={lean}
               />
 
               {/* The menu only exists while the light is on. Off, the room is
@@ -295,7 +272,7 @@ export default function Sections() {
                 aria-hidden={!lightOn}
                 // dims as the lamp swings off them; the per-item lighting below
                 // is a separate filter and the two compose
-                style={{ filter: swept }}
+                style={{ filter: LIT }}
               >
                 {MENU.map((m, i) => (
                   <motion.button

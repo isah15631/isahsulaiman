@@ -1,101 +1,53 @@
 "use client";
 
-import { animate, motion, useMotionValue, type MotionValue, type PanInfo } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import { playClick } from "@/lib/audio";
 
 // A bulb on a cord with a pull-chain. Pull it and light falls over the menu;
 // pull it again and the menu goes back into the dark.
 //
-// Kept deliberately analog: a drawn filament, a cord that sways a little when
-// you tug it, and a soft cone of light. No switches, no chrome, no glow that
-// looks like a dashboard.
+// Kept deliberately analog: a drawn filament, a bare cord, and a soft cone of
+// light. No switches, no chrome, no glow that looks like a dashboard.
 //
-// The chain is not a button with a canned wobble, it is a thing you can take
-// hold of. Drag it and the fixture leans with you and the chain stretches;
-// let go and it swings itself out on a spring loose enough to overshoot
-// several times, which is what a pendulum does. The light cone and the pool
-// beneath it live inside the fixture, so all of that sweeps across the room
-// for free.
+// The fixture hangs still. It was draggable for a while: you could take the
+// chain, lean the whole thing sixteen degrees and let it swing itself out on a
+// loose spring, and because the cone and the pool live inside the fixture the
+// light swept the room with it. It was the best toy in here and it was not
+// worth what it cost. Swinging meant the menu's lit filter was rebuilt every
+// frame, and a chained pair of drop-shadows over live text is an expensive
+// paint; the whole room dropped frames for a gesture nobody needs to make.
+//
+// So the lamp arrives and then it is a lamp. It drops in, and the chain turns
+// it on and off.
 
-/** Degrees the fixture will lean at full pull. The room divides by it. */
-export const MAX_LEAN = 16;
-/** Pixels of horizontal drag per degree of lean. */
-const LEVERAGE = 0.075;
-/** How far down you have to pull before it counts as a pull. */
-const PULL = 22;
 const CHAIN_REST = 40;
-const CHAIN_MAX = 34;
-
-// Loose and heavy: it should cross zero four or five times before it gives up.
-const SWING = { type: "spring", stiffness: 42, damping: 3.4, mass: 1 } as const;
-
-const clamp = (v: number, lo: number, hi: number) =>
-  v < lo ? lo : v > hi ? hi : v;
 
 type Props = {
   on: boolean;
   onToggle: () => void;
-  /**
-   * The fixture's lean, in degrees, written every frame while it swings. The
-   * room reads it to dim the menu as the light travels off the words. Passed
-   * in rather than reported by callback because this changes at 60fps and
-   * must never go through React state.
-   */
-  lean?: MotionValue<number>;
 };
 
-export default function LightBulb({ on, onToggle, lean }: Props) {
-  const ownLean = useMotionValue(0);
-  const angle = lean ?? ownLean;
-  const chain = useMotionValue(CHAIN_REST);
-  // A pan ends before the click fires, so without this a drag-to-pull would
-  // toggle twice.
-  const dragged = useRef(false);
-
-  const release = () => {
-    animate(angle, 0, SWING);
-    animate(chain, CHAIN_REST, { type: "spring", stiffness: 380, damping: 22 });
-  };
-
-  const onPan = (_: unknown, info: PanInfo) => {
-    dragged.current = true;
-    angle.set(clamp(info.offset.x * LEVERAGE, -MAX_LEAN, MAX_LEAN));
-    chain.set(CHAIN_REST + clamp(info.offset.y, 0, CHAIN_MAX));
-  };
-
-  const onPanEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.y > PULL) {
-      playClick();
-      onToggle();
-    }
-    release();
-  };
-
+export default function LightBulb({ on, onToggle }: Props) {
   const onClick = () => {
-    // swallowed if this was the tail of a drag; the pan already decided
-    if (dragged.current) {
-      dragged.current = false;
-      return;
-    }
     playClick();
     onToggle();
-    // a tug still sets it swinging, just a small one
-    angle.set(on ? 5.5 : -5.5);
-    animate(angle, 0, SWING);
   };
+
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">
       {/* The fixture is lowered into the room rather than found already there.
           This is the arrival: you have just walked in, and the light comes down
           out of the dark before there is anything to read. A spring with a
           little overshoot, because a cord on a ceiling rose bounces once and
-          settles, and the sway below then catches the same motion.
+          settles.
 
           Every time the menu mounts, not just the first. Coming back from a
           section the room is already sliding down, and the lamp arriving a
           beat behind it reads as being lowered in after you rather than as a
-          duplicate move. */}
+          duplicate move.
+
+          This is the only thing the fixture does. Once it has landed it hangs,
+          and nothing moves it again. */}
       <motion.div
         initial={{ y: "-115%" }}
         animate={{ y: 0 }}
@@ -107,13 +59,7 @@ export default function LightBulb({ on, onToggle, lean }: Props) {
           delay: 0.25,
         }}
       >
-        {/* The whole fixture hangs from the ceiling rose and leans from there.
-            Everything below is inside it, the cone and the pool included, so
-            swinging the lamp swings the light. */}
-        <motion.div
-          className="relative flex flex-col items-center"
-          style={{ transformOrigin: "50% 0%", rotate: angle }}
-        >
+        <div className="relative flex flex-col items-center">
           {/* Cord down from the ceiling.
               It was a 1px line fading up to 10% white, which measures fine and
               is invisible on a phone: a hairline at a tenth of white against
@@ -183,26 +129,22 @@ export default function LightBulb({ on, onToggle, lean }: Props) {
             <circle cx="64" cy="29.5" r="2.3" fill="rgba(196,190,180,0.8)" />
           </svg>
 
-          {/* pull chain — the thing you actually take hold of */}
-          <motion.button
+          {/* pull chain — the switch, and nothing more than that */}
+          <button
             type="button"
             onClick={onClick}
-            onPan={onPan}
-            onPanEnd={onPanEnd}
             aria-label={on ? "Turn the light off" : "Turn the light on"}
             aria-pressed={on}
             // Hangs from the socket lug at (64, 29.5) in the svg's viewBox. The
             // svg is a fixed 76px wide, and p-3 adds 12px, hence these offsets.
-            // touch-none so dragging the chain on a phone pulls the chain
-            // instead of scrolling the room out from under it.
-            className="pointer-events-auto group absolute left-[52px] top-[calc(clamp(56px,12vh,130px)+18px)] flex cursor-grab touch-none select-none flex-col items-center p-3 active:cursor-grabbing"
+            className="pointer-events-auto group absolute left-[52px] top-[calc(clamp(56px,12vh,130px)+18px)] flex cursor-pointer select-none flex-col items-center p-3"
           >
             <span className="flex flex-col items-center">
-              <motion.span
+              <span
                 className="block"
                 style={{
                   width: "1.5px",
-                  height: chain,
+                  height: CHAIN_REST,
                   backgroundColor: "rgba(255,255,255,0.34)",
                   backgroundImage:
                     "linear-gradient(to bottom, rgba(255,255,255,0.62), rgba(255,255,255,0.34))",
@@ -230,7 +172,7 @@ export default function LightBulb({ on, onToggle, lean }: Props) {
                 )}
               </motion.span>
             </span>
-          </motion.button>
+          </button>
 
           {/* The light it throws down over the menu.
               Note the split: the OUTER div owns the centring transform and the
@@ -286,7 +228,7 @@ export default function LightBulb({ on, onToggle, lean }: Props) {
               transition={{ duration: on ? 0.9 : 0.4, ease: "easeOut" }}
             />
           </div>
-        </motion.div>
+        </div>
       </motion.div>
     </div>
   );
