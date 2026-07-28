@@ -40,8 +40,16 @@ export type HeartChunk = { centre: THREE.Vector3; random: number };
 /**
  * Builds a plump heart as a non-indexed geometry, with per-face attributes
  * (`aCentroid`, `aRandom`) so the shatter shader can fling each face outward.
+ *
+ * `seed` varies how it comes apart without touching what it is. It feeds the
+ * per-chunk and per-face randoms only, so the shape, the surface and the
+ * grouping into slabs are identical every time and only the tumble, the order
+ * things give way in, and which shard becomes which butterfly change.
  */
-export function createHeartGeometry(detail = 96): THREE.BufferGeometry {
+export function createHeartGeometry(
+  detail = 96,
+  seed = 0
+): THREE.BufferGeometry {
   // Start from a smooth sphere; remap every vertex into a pillow-heart.
   const sphere = new THREE.SphereGeometry(1, detail, detail);
   const pos = sphere.attributes.position as THREE.BufferAttribute;
@@ -131,7 +139,7 @@ export function createHeartGeometry(detail = 96): THREE.BufferGeometry {
   cells.forEach((cell, k) => {
     const mid = cell.sum.clone().multiplyScalar(1 / cell.n);
     chunkCentre.set(k, mid);
-    chunkRandom.set(k, hash(mid.x + 3.1, mid.y + 1.7, mid.z + 9.2));
+    chunkRandom.set(k, hash(mid.x + 3.1 + seed, mid.y + 1.7 + seed, mid.z + 9.2 + seed));
   });
 
   const centroids = new Float32Array(p.count * 3);
@@ -145,7 +153,7 @@ export function createHeartGeometry(detail = 96): THREE.BufferGeometry {
     const k = faceKeys[f];
     const cc = chunkCentre.get(k)!;
     const cr = chunkRandom.get(k)!;
-    const fr = hash(fc.x + 5.7, fc.y + 2.3, fc.z + 1.9);
+    const fr = hash(fc.x + 5.7 + seed, fc.y + 2.3 + seed, fc.z + 1.9 + seed);
     for (let j = 0; j < 3; j++) {
       const i = i0 + j;
       centroids[i * 3] = fc.x;

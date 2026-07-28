@@ -1,10 +1,12 @@
 "use client";
 
 import { Canvas, useThree } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import * as THREE from "three";
 import type { PerspectiveCamera } from "three";
 import { createHeartGeometry, sampleSurface } from "@/lib/heartGeometry";
 import type { ShardLaunch } from "@/lib/shards";
+import CagedButterflies from "./CagedButterflies";
 import Heart from "./Heart";
 import StoneMotes from "./StoneMotes";
 
@@ -40,7 +42,16 @@ function Contents(props: HeartSceneProps) {
   // 80 segments ≈ 12.8k faces, grouped into slabs by createHeartGeometry.
   // The scene owns the geometry so the falling stone can spawn from the very
   // same surface the heart is made of.
-  const geometry = useMemo(() => createHeartGeometry(80), []);
+  //
+  // Seeded per mount so no two visits break the same way. Safe to call
+  // Math.random here: this whole scene is loaded with ssr:false, so there is
+  // no server render to disagree with.
+  const geometry = useMemo(() => createHeartGeometry(80, Math.random() * 100), []);
+
+  // Two channels between the heart and what it is holding, both refs because
+  // both change every frame or on every tap and neither should re-render.
+  const pulse = useRef(0);
+  const strike = useRef<{ point: THREE.Vector3; seq: number } | null>(null);
   const origins = useMemo(() => sampleSurface(geometry, 90), [geometry]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -52,7 +63,25 @@ function Contents(props: HeartSceneProps) {
       <ambientLight intensity={0.25} />
       <directionalLight position={[3, 4, 5]} intensity={0.7} />
       <pointLight position={[-4, -2, 3]} intensity={0.3} color="#ff7a4d" />
-      <Heart geometry={geometry} {...props} />
+      {/* inside the glass, before anything can reach them */}
+      <CagedButterflies
+        geometry={geometry}
+        awaken={props.targetAwaken}
+        shattering={props.shattering}
+        pulse={pulse}
+        strike={strike}
+      />
+      <Heart
+        geometry={geometry}
+        {...props}
+        pulseOut={pulse}
+        onStrike={(local) => {
+          strike.current = {
+            point: local,
+            seq: (strike.current?.seq ?? 0) + 1,
+          };
+        }}
+      />
       <StoneMotes
         origins={origins}
         awaken={props.targetAwaken}
