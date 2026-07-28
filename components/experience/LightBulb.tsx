@@ -114,13 +114,20 @@ export default function LightBulb({ on, onToggle, lean }: Props) {
           className="relative flex flex-col items-center"
           style={{ transformOrigin: "50% 0%", rotate: angle }}
         >
-          {/* cord down from the ceiling */}
+          {/* Cord down from the ceiling.
+              It was a 1px line fading up to 10% white, which measures fine and
+              is invisible on a phone: a hairline at a tenth of white against
+              pure black is under the threshold of a handset screen at any
+              sensible brightness. Wider, brighter at the top, and carrying a
+              flat colour underneath the gradient so it survives even where a
+              gradient in a 1.5px box gets rounded away. */}
           <div
-            className="w-px"
             style={{
+              width: "1.5px",
               height: "clamp(56px, 12vh, 130px)",
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0.42))",
+              backgroundColor: "rgba(255,255,255,0.30)",
+              backgroundImage:
+                "linear-gradient(to bottom, rgba(255,255,255,0.26), rgba(255,255,255,0.6))",
             }}
           />
 
@@ -192,11 +199,13 @@ export default function LightBulb({ on, onToggle, lean }: Props) {
           >
             <span className="flex flex-col items-center">
               <motion.span
-                className="block w-px"
+                className="block"
                 style={{
+                  width: "1.5px",
                   height: chain,
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.50), rgba(255,255,255,0.26))",
+                  backgroundColor: "rgba(255,255,255,0.34)",
+                  backgroundImage:
+                    "linear-gradient(to bottom, rgba(255,255,255,0.62), rgba(255,255,255,0.34))",
                 }}
               />
               <motion.span
