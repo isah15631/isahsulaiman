@@ -14,6 +14,8 @@ import {
   stopHeartbeat,
 } from "@/lib/audio";
 import Butterflies from "./Butterflies";
+import Doorway from "./Doorway";
+import LastButterfly from "./LastButterfly";
 import WelcomeSequence from "./WelcomeSequence";
 import Sections from "./Sections";
 
@@ -163,31 +165,18 @@ export default function Experience() {
       {/* the eruption — the shards themselves, once they turn */}
       {phase === "eruption" && launch && <Butterflies launch={launch} />}
 
+      {/* the straggler, still leaving through the silence */}
+      {phase === "silence" && <LastButterfly />}
+
       {/* the whispered introduction */}
       {phase === "welcome" && (
         <WelcomeSequence onDone={() => goPhase("explore")} />
       )}
 
-      {/* explore — a single button, nothing else */}
-      <AnimatePresence>
-        {phase === "explore" && (
-          <motion.div
-            key="explore"
-            className="fixed inset-0 z-40 flex items-center justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.4, ease: "easeInOut" }}
-          >
-            <button
-              onClick={() => goPhase("sections")}
-              className="font-serif text-2xl font-light tracking-[0.15em] text-neutral-300 transition-colors duration-500 hover:text-ember md:text-3xl"
-            >
-              Explore →
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* the door. The room is not mounted until we are through it: the swing
+          and the walk through carry the whole transition, and both sides of
+          the cut are black, so the join cannot be seen. */}
+      {phase === "explore" && <Doorway onThrough={() => goPhase("sections")} />}
 
       {/* the four sections */}
       {phase === "sections" && <Sections />}
