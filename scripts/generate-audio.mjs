@@ -139,6 +139,23 @@ const MIX = {
   },
 };
 
+// A two-pole resonator: one ringing frequency, used to give noise or a pulse
+// train the body of the thing it is supposed to be coming out of.
+function resonator(data, fc, bw, gain) {
+  const r = Math.exp((-Math.PI * bw) / SR);
+  const b1 = 2 * r * Math.cos((2 * Math.PI * fc) / SR);
+  const b2 = -r * r;
+  let y1 = 0;
+  let y2 = 0;
+  for (let i = 0; i < data.length; i++) {
+    const y = gain * data[i] + b1 * y1 + b2 * y2;
+    y2 = y1;
+    y1 = y;
+    data[i] = y;
+  }
+  return data;
+}
+
 // A single low thump — the muscle contraction of a heartbeat.
 function thump(data, start, freq, amp, decay, mix) {
   const s = Math.floor(start * SR);
@@ -240,6 +257,65 @@ function click() {
   return normalize(d, 0.42);
 }
 
+// ---- door: a hinge complaining, then the door coming to rest ----
+//
+// The creak is stick-slip, not a tone. Friction grabs, gives, grabs again, a
+// couple of hundred times a second, and every release is a tiny impulse. So it
+// is built as a pulse train with irregular amplitudes, run through two wooden
+// resonances, which gets far closer than sweeping a filter over noise does.
+// The rate rises as the door picks up speed and falls as it slows, because
+// that is what the hinge is reporting.
+//
+// Timed against the swing in Doorway.tsx: 0.95s of movement, then it meets the
+// frame and stops.
+const SWING = 0.95;
+
+function door() {
+  const d = buffer(1.4);
+
+  const cn = Math.floor(SWING * SR);
+  const pulses = new Float32Array(cn);
+  let phase = 0;
+  for (let i = 0; i < cn; i++) {
+    const k = i / cn;
+    const rate = 112 + 128 * Math.sin(Math.PI * Math.pow(k, 0.8));
+    phase += rate / SR;
+    if (phase >= 1) {
+      phase -= 1;
+      pulses[i] = 0.35 + Math.random() * 0.65; // the slip, never twice the same
+    }
+  }
+
+  // Two formants in parallel rather than in series: in series the second only
+  // ever hears what the first let through, and the wood loses its top.
+  const lo = resonator(Float32Array.from(pulses), 780, 130, 1);
+  const hi = resonator(Float32Array.from(pulses), 1560, 320, 0.5);
+
+  // Levelled on its own before anything else goes in. A resonator has a lot of
+  // gain at its own frequency, so the raw creak peaks around twenty; mixed in
+  // first and normalised afterwards it flattened the settle to a peak of 0.01,
+  // which is silence. The two parts have to be balanced against each other
+  // here, not left to the normalise at the end.
+  const creak = new Float32Array(cn);
+  for (let i = 0; i < cn; i++) {
+    const k = i / cn;
+    // a hinge does not start at full complaint, and it tails off as it slows
+    const env = Math.min(1, k / 0.12) * Math.min(1, (1 - k) / 0.3);
+    creak[i] = (lo[i] + hi[i]) * env;
+  }
+  normalize(creak, 0.42);
+
+  const start = Math.floor(0.06 * SR);
+  for (let i = 0; i < cn; i++) d[start + i] += creak[i];
+
+  // and the door reaching the end of its travel. Not a slam: it is being
+  // pushed open, so this is the weight of it settling.
+  thump(d, SWING + 0.07, 78, 0.7, 26, MIX.plain);
+  thud(d, SWING + 0.07, { amp: 0.45, decay: 42, lo: 150, hi: 2600 });
+
+  return normalize(d, 0.7);
+}
+
 // A bell partial with exponential decay.
 function bell(data, start, freq, amp, decay) {
   const s = Math.floor(start * SR);
@@ -302,5 +378,9 @@ save("heartbeat-phone.wav", heartbeat(MIX.phone));
 // chime() is no longer emitted. It was a bell pair at 880 and 1175 Hz, which
 // landed like a game pickup over the shatter. Kept above for reference only.
 save("click.wav", click());
+// door() is not emitted yet. The creak is built and timed against the swing,
+// but it has not been signed off by ear, so nothing plays it and the asset is
+// not shipped. Add the save back and re-wire playDoor in lib/audio.ts to pick
+// it up again:  node scripts/generate-audio.mjs door
 save("swell.wav", swell());
 console.log("Done.");
