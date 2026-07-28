@@ -13,7 +13,7 @@ import Butterfly from "./Butterfly";
 import Carrier from "./Carrier";
 import LightBulb from "./LightBulb";
 import PortraitAssembly from "./PortraitAssembly";
-import RoomButterflies from "./RoomButterflies";
+import Wall from "./Wall";
 
 type SectionKey = "about" | "projects" | "experiments" | "contact";
 const MENU: { key: SectionKey; label: string }[] = [
@@ -81,8 +81,17 @@ const room: Variants = {
   }),
 };
 
+// A pane is a wall with something on it.
+//
+// The wall is pinned to the pane and the content scrolls over it, which is why
+// these are two elements rather than one: hang the wall inside the scroller and
+// it slides away the moment you read past the fold, and a wall that scrolls is
+// a poster. Both travel together during a fall, so what you drop past is the
+// wall itself.
+const PANE = "absolute inset-0";
 /** Each pane owns its own scrolling, so neither can disturb the other's. */
-const PANE = "absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar";
+const SCROLLER =
+  "absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar";
 
 // The portrait's shape: a dome at the top, gently rounded below. Not a full
 // oval, which crops a head into a locket, and not a rectangle, which was the
@@ -206,24 +215,14 @@ export default function Sections() {
     // is falling past the other they would otherwise share a scrollbar and
     // fight over its height.
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#070504] text-neutral-200">
-      {/* warm vignette so sections feel like the world the butterflies made */}
-      <motion.div
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background:
-            "radial-gradient(120% 90% at 50% 0%, rgba(255,120,60,0.08), transparent 55%)",
-        }}
-        initial={false}
-        animate={{ opacity: lightOn ? 1 : 0.25 }}
-        transition={{ duration: 0.6 }}
-      />
+      {/* The warm vignette that used to live here is gone. Each wall carries
+          its own lamplight now, which is better than a fixed wash over the top:
+          it travels with the pane, so during a fall the light falls off the
+          wall you are leaving instead of hanging in front of both of them.
 
-      {/* Placed before the content on purpose. Positioned siblings with no
-          stacking of their own paint in DOM order, so they pass behind the
-          words rather than across them. */}
-      {/* lamp: the bulb is lit AND you are in the room with it, so there is
-          something to fly to. Down in a section it is above the ceiling. */}
-      <RoomButterflies lit={lightOn} lamp={lightOn && selected === null} />
+          The bare colour underneath stays. It is what shows in the gap between
+          two walls while you are dropping past them. */}
+
 
       {/* the cord, only once you are down here with the lamp above you */}
       <AnimatePresence>
@@ -249,76 +248,79 @@ export default function Sections() {
             exit="leave"
             className={PANE}
           >
-            <div className="relative flex min-h-full flex-col items-center justify-center">
-              <LightBulb
-                on={lightOn}
-                onToggle={() => setLightOn((v) => !v)}
-              />
+            <Wall lit={lightOn} lamp={lightOn} />
+            <div className={SCROLLER}>
+              <div className="relative flex min-h-full flex-col items-center justify-center">
+                <LightBulb
+                  on={lightOn}
+                  onToggle={() => setLightOn((v) => !v)}
+                />
 
-              {/* The menu only exists while the light is on. Off, the room is
-                  dark and there is nothing to read or click.
+                {/* The menu only exists while the light is on. Off, the room is
+                    dark and there is nothing to read or click.
 
-                  It is lit, not faded in. Light does not make a thing arrive, it
-                  makes a thing visible, so the words brighten from almost unlit,
-                  overshoot as the filament surges, and settle. The stagger runs
-                  top to bottom because that is the direction the cone travels,
-                  and the warm halo is the tungsten catching the letterforms
-                  before it settles to a glow.
+                    It is lit, not faded in. Light does not make a thing arrive, it
+                    makes a thing visible, so the words brighten from almost unlit,
+                    overshoot as the filament surges, and settle. The stagger runs
+                    top to bottom because that is the direction the cone travels,
+                    and the warm halo is the tungsten catching the letterforms
+                    before it settles to a glow.
 
-                  Brightness rather than colour on purpose: an inline `color`
-                  would outrank the hover:text-ember class and kill the hover. */}
-              <motion.nav
-                className="relative z-10 mt-[26vh] flex flex-col items-center gap-6"
-                aria-hidden={!lightOn}
-                // dims as the lamp swings off them; the per-item lighting below
-                // is a separate filter and the two compose
-                style={{ filter: LIT }}
-              >
-                {MENU.map((m, i) => (
-                  <motion.button
-                    key={m.key}
-                    onClick={() => open(m.key)}
-                    tabIndex={lightOn ? 0 : -1}
-                    initial={false}
-                    animate={
-                      lightOn
-                        ? {
-                            opacity: [0, 1, 1],
-                            filter: [
-                              "brightness(0.15)",
-                              "brightness(1.18)",
-                              "brightness(1)",
-                            ],
-                            textShadow: [
-                              "0 0 0px rgba(255,190,110,0)",
-                              "0 0 20px rgba(255,190,110,0.5)",
-                              "0 0 9px rgba(255,190,110,0.16)",
-                            ],
-                          }
-                        : {
-                            opacity: 0,
-                            filter: "brightness(0.15)",
-                            textShadow: "0 0 0px rgba(255,190,110,0)",
-                          }
-                    }
-                    transition={
-                      lightOn
-                        ? {
-                            duration: 0.85,
-                            times: [0, 0.35, 1],
-                            delay: 0.1 + i * 0.12,
-                            ease: "easeOut",
-                          }
-                        : { duration: 0.3, ease: "easeOut" }
-                    }
-                    className={`font-serif text-3xl font-light tracking-wide text-neutral-200 transition-colors duration-500 hover:text-ember md:text-5xl ${
-                      lightOn ? "" : "pointer-events-none"
-                    }`}
-                  >
-                    {m.label}
-                  </motion.button>
-                ))}
-              </motion.nav>
+                    Brightness rather than colour on purpose: an inline `color`
+                    would outrank the hover:text-ember class and kill the hover. */}
+                <motion.nav
+                  className="relative z-10 mt-[26vh] flex flex-col items-center gap-6"
+                  aria-hidden={!lightOn}
+                  // dims as the lamp swings off them; the per-item lighting below
+                  // is a separate filter and the two compose
+                  style={{ filter: LIT }}
+                >
+                  {MENU.map((m, i) => (
+                    <motion.button
+                      key={m.key}
+                      onClick={() => open(m.key)}
+                      tabIndex={lightOn ? 0 : -1}
+                      initial={false}
+                      animate={
+                        lightOn
+                          ? {
+                              opacity: [0, 1, 1],
+                              filter: [
+                                "brightness(0.15)",
+                                "brightness(1.18)",
+                                "brightness(1)",
+                              ],
+                              textShadow: [
+                                "0 0 0px rgba(255,190,110,0)",
+                                "0 0 20px rgba(255,190,110,0.5)",
+                                "0 0 9px rgba(255,190,110,0.16)",
+                              ],
+                            }
+                          : {
+                              opacity: 0,
+                              filter: "brightness(0.15)",
+                              textShadow: "0 0 0px rgba(255,190,110,0)",
+                            }
+                      }
+                      transition={
+                        lightOn
+                          ? {
+                              duration: 0.85,
+                              times: [0, 0.35, 1],
+                              delay: 0.1 + i * 0.12,
+                              ease: "easeOut",
+                            }
+                          : { duration: 0.3, ease: "easeOut" }
+                      }
+                      className={`font-serif text-3xl font-light tracking-wide text-neutral-200 transition-colors duration-500 hover:text-ember md:text-5xl ${
+                        lightOn ? "" : "pointer-events-none"
+                      }`}
+                    >
+                      {m.label}
+                    </motion.button>
+                  ))}
+                </motion.nav>
+              </div>
             </div>
           </motion.div>
         ) : (
@@ -331,28 +333,34 @@ export default function Sections() {
             exit="leave"
             className={PANE}
           >
-            {/* Kill the light in here and the reading goes with it. Opacity
-                only: pointer events and the accessibility tree are left alone,
-                because a screen reader turning off a lamp it cannot see should
-                not lose the page. */}
-            <motion.section
-              className="relative mx-auto min-h-full w-full max-w-3xl px-6 py-24"
-              initial={false}
-              animate={{ opacity: lightOn ? 1 : 0.045 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <button
-                onClick={back}
-                className="mb-16 font-sans text-sm tracking-widest text-neutral-500 transition-colors hover:text-ember"
+            {/* The same wall, further down. What is written here is written on
+                it, which is the point: you did not open a page, you dropped to
+                another face of the room you are already in. */}
+            <Wall lit={lightOn} lamp={false} />
+            <div className={SCROLLER}>
+              {/* Kill the light in here and the reading goes with it. Opacity
+                  only: pointer events and the accessibility tree are left alone,
+                  because a screen reader turning off a lamp it cannot see should
+                  not lose the page. */}
+              <motion.section
+                className="relative mx-auto min-h-full w-full max-w-3xl px-6 py-24"
+                initial={false}
+                animate={{ opacity: lightOn ? 1 : 0.045 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
               >
-                ← back
-              </button>
+                <button
+                  onClick={back}
+                  className="mb-16 font-sans text-sm tracking-widest text-neutral-500 transition-colors hover:text-ember"
+                >
+                  ← back
+                </button>
 
-              {selected === "about" && <About />}
-              {selected === "projects" && <Projects />}
-              {selected === "experiments" && <Experiments />}
-              {selected === "contact" && <Contact />}
-            </motion.section>
+                {selected === "about" && <About />}
+                {selected === "projects" && <Projects />}
+                {selected === "experiments" && <Experiments />}
+                {selected === "contact" && <Contact />}
+              </motion.section>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
