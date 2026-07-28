@@ -33,6 +33,25 @@ body {
   box-sizing: border-box;
 }
 
+/* ---------------- Scrolling ---------------- */
+/* Sections have to scroll, but a chrome scrollbar down the side of the room
+   breaks it: the piece has no other browser furniture in it, and on Windows
+   the bar is a permanent light-grey stripe against a black page. Wheel, touch,
+   trackpad, keyboard and drag-select all still scroll. Only the bar is gone.
+   Same intent as the overflow:hidden above, extended to the panes.
+
+   It also stops the width jumping. Two panes are alive at once during a fall,
+   so without this both could show a bar and the second one would arrive
+   fifteen pixels narrower than the first. */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
 /* ---------------- Butterflies ---------------- */
 .butterfly {
   display: block;

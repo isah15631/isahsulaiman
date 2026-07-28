@@ -3,6 +3,36 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import type { HeartChunk } from "@/lib/heartGeometry";
+import type { ShardLaunch, ShardSeed } from "@/lib/shards";
+
+/** Time base for the flight maths — uShatter runs 0→1 over this many seconds. */
+const SHATTER_SECONDS = 2.2;
+
+// No shard outlives the break: each one flares and is gone at its own moment,
+// because a butterfly is taking its place there. The first turns at
+// CONVERT_MIN, the last at CONVERT_MIN + CONVERT_SPAN (in uShatter units).
+const CONVERT_MIN = 0.16;
+const CONVERT_SPAN = 0.34;
+const CONVERT_FADE = 0.07;
+/** Nothing of the heart is left after this — the scene can be torn down. */
+const SHATTER_END = CONVERT_MIN + CONVERT_SPAN + 0.08;
+
+// Where you hit it is where it breaks. Every tap is kept, in the heart's own
+// local space, and plates near one give way sooner than their own random
+// would have allowed.
+const MAX_TAPS = 5; // FINAL_TAP; the last one shatters it anyway
+/** Inside this radius of a strike, a plate is fully weakened. */
+const STRIKE_CORE = 0.22;
+/** Beyond this, a strike is not felt at all. The heart is ~2.4 across. */
+const STRIKE_REACH = 0.95;
+/** How much of a plate's reluctance a direct hit removes. */
+const STRIKE_BIAS = 0.5;
+
+/** How clear the glass is where you look straight through it. */
+const BODY_ALPHA = 0.55;
+
+const glsl = (n: number) => n.toFixed(4);
 
 const vertexShader = /* glsl */ `
   uniform float uAwaken;
@@ -52,6 +82,12 @@ const vertexShader = /* glsl */ `
       offset.y -= uShatter * uShatter * (0.9 + r * 1.1); // gentle gravity
       p += offset;
       nrm = rot * nrm;
+
+      // Just before it changes, the slab draws in on itself — it gathers to a
+      // point of light, and the butterfly opens out of that same point.
+      float sConv = ${glsl(CONVERT_MIN)} + r * ${glsl(CONVERT_SPAN)};
+      float gather = smoothstep(sConv - 0.20, sConv + ${glsl(CONVERT_FADE)}, uShatter);
+      p = mix(p, aChunkCentre + offset, gather * 0.7);
     }
 
     vNormal = normalize(normalMatrix * nrm);
@@ -63,6 +99,14 @@ const fragmentShader = /* glsl */ `
   uniform float uAwaken;
   uniform float uPulse;
   uniform float uShatter;
+  // Where in the noise field this heart is cut from. Everything below is
+  // deterministic, so without it the stone fractures along exactly the same
+  // seams on every visit. Moving the sampling position moves the whole
+  // Voronoi lattice, which lays out a different set of plates.
+  uniform vec3 uSeed;
+  // Every place the heart has been struck, in its own local space.
+  uniform vec3 uTaps[${MAX_TAPS}];
+  uniform int uTapCount;
   varying vec3 vPos;
   varying vec3 vNormal;
   varying float vRandom;
@@ -155,12 +199,17 @@ const fragmentShader = /* glsl */ `
     vec3 nrm = normalize(vNormal);
     float fres = pow(1.0 - abs(nrm.z), 2.5);
 
+    // Every noise lookup below reads from here rather than from vPos directly.
+    // The shape of the heart is unchanged; only which part of the noise it is
+    // carved out of moves.
+    vec3 sp = vPos + uSeed;
+
     // ---- while shattering ----
     // The heart is fully alive by now, so skip the crack maths entirely and
     // settle for one octave — the pieces are flying apart and fading, so the
     // detail is invisible. This is the frame budget the butterflies need.
     if(uShatter > 0.0001){
-      float tone = snoise(vPos * 1.8) * 0.5 + 0.5;
+      float tone = snoise(sp * 1.8) * 0.5 + 0.5;
 
       // Read as GLASS breaking: a dark cool shard, a hard bright edge where it
       // catches the light, and the heart's warmth still burning through it.
@@ -171,15 +220,22 @@ const fragmentShader = /* glsl */ `
       c += vec3(1.0) * pow(fres, 3.0) * 0.55;
       c += vec3(1.0, 0.55, 0.28) * 0.22 * (0.6 + uPulse * 0.4);
 
-      // Fade per CHUNK, so a slab dissolves as a whole rather than eroding
-      // unevenly across its own faces.
-      float a = 1.0 - smoothstep(0.45, 1.0, uShatter * (0.55 + vChunk * 0.85));
+      // Each shard has its own moment. It catches the light, whites out, and is
+      // gone — and the swarm has a butterfly opening at that exact spot.
+      float sConv = ${glsl(CONVERT_MIN)} + vChunk * ${glsl(CONVERT_SPAN)};
+      float flare = smoothstep(sConv - 0.22, sConv, uShatter);
+      c += vec3(1.0, 0.82, 0.55) * flare * 0.9;
+      c += vec3(1.0) * flare * flare * 0.7;
+
+      // Per CHUNK, so a slab goes as a whole rather than eroding unevenly
+      // across its own faces.
+      float a = 1.0 - smoothstep(sConv - ${glsl(CONVERT_FADE)}, sConv + ${glsl(CONVERT_FADE)} * 0.4, uShatter);
       if(a < 0.02) discard;
       gl_FragColor = vec4(c, a);
       return;
     }
 
-    float grain = fbm2(vPos * 3.3);
+    float grain = fbm2(sp * 3.3);
 
     // ---- cracks (only while the heart is still whole) ----
     // Seams run along Voronoi cell boundaries, so the surface reads as
@@ -189,22 +245,37 @@ const fragmentShader = /* glsl */ `
     // than broken stone. Warping the space first makes the plates irregular and
     // organic; the high-frequency term then frays the seams so no edge is a
     // clean mathematical curve.
-    float warp = fbm2(vPos * 1.7);
-    vec3 q = vPos * 3.0 + vec3(warp, warp * 0.75, -warp) * 0.6;
+    float warp = fbm2(sp * 1.7);
+    vec3 q = sp * 3.0 + vec3(warp, warp * 0.75, -warp) * 0.6;
     vec3 vor = voronoi(q);
     float seam = vor.y - vor.x;   // → 0 at a plate boundary
-    seam += snoise(vPos * 15.0) * 0.020;  // ragged, chipped edges
+    seam += snoise(sp * 15.0) * 0.020;  // ragged, chipped edges
     float plate = vor.z;          // per-plate random
+
+    // How close this point is to somewhere actually struck. Every tap is
+    // recorded, so the damage accumulates around wherever you have been
+    // hitting it rather than spreading evenly.
+    float strike = 0.0;
+    for(int i = 0; i < ${MAX_TAPS}; i++){
+      if(i >= uTapCount) break;
+      strike = max(strike, 1.0 - smoothstep(${glsl(STRIKE_CORE)}, ${glsl(STRIKE_REACH)}, distance(vPos, uTaps[i])));
+    }
 
     // Plates give way a few at a time: one fissure at first, the whole
     // surface by the final tap.
+    //
+    // A plate's willingness to go is its own random, lowered near a strike.
+    // That is the whole of it: hit the same lobe five times and it fails
+    // there, spread the taps out and it fails evenly. By the last tap the
+    // threshold is past 1.0, so everything gives way wherever you hit it.
     float openT = mix(0.06, 1.08, uAwaken);
-    float opened = smoothstep(openT + 0.09, openT - 0.09, plate);
+    float rank = plate - strike * ${glsl(STRIKE_BIAS)};
+    float opened = smoothstep(openT + 0.09, openT - 0.09, rank);
     opened *= step(0.001, uAwaken);
 
     // Fissures widen as it wakes, and vary along their length — a crack of
     // constant width looks machined.
-    float seamW = mix(0.05, 0.10, uAwaken) * (0.65 + 0.7 * (snoise(vPos * 5.5) * 0.5 + 0.5));
+    float seamW = mix(0.05, 0.10, uAwaken) * (0.65 + 0.7 * (snoise(sp * 5.5) * 0.5 + 0.5));
     float lip = (1.0 - smoothstep(seamW * 0.45, seamW, seam)) * opened;
     float core = (1.0 - smoothstep(0.0, seamW * 0.5, seam)) * opened;
 
@@ -259,12 +330,19 @@ const fragmentShader = /* glsl */ `
     // warm rim once it is properly alight
     col += vec3(1.0, 0.5, 0.25) * fres * 0.45 * flood;
 
-    gl_FragColor = vec4(col, 1.0);
+    // Actually see-through now, because there is finally something behind it
+    // worth seeing. The rim stays solid: glass is thickest where you look
+    // along its surface, and keeping the edge opaque is what stops the whole
+    // thing reading as a dim shape rather than as a lit one. The middle, where
+    // you are looking straight through the least glass, opens up.
+    //
+    // The fissures stay solid too. A crack is a fracture in the material, not
+    // a hole, and letting the background through it would flatten the one
+    // detail the whole intro is built on.
+    float clarity = mix(${glsl(BODY_ALPHA)}, 1.0, max(fres, max(core, lip)));
+    gl_FragColor = vec4(col, clarity);
   }
 `;
-
-/** How long the heart takes to break apart, in real seconds. */
-const SHATTER_SECONDS = 2.2;
 
 // Double-bump (lub-dub) envelope for the visual pulse.
 function beatEnv(phase: number) {
@@ -272,6 +350,15 @@ function beatEnv(phase: number) {
     Math.exp(-((x - c) * (x - c)) / (2 * w * w));
   const p = phase - Math.floor(phase);
   return Math.min(1, g(p, 0, 0.03) + g(p, 1, 0.03) + 0.6 * g(p, 0.2, 0.04));
+}
+
+// The shatter, replayed on the CPU for one chunk. Must match the vertex
+// shader's slab motion above, or the butterflies will not appear where the
+// shards actually were.
+function shardAt(centre: THREE.Vector3, random: number, s: number, out: THREE.Vector3) {
+  out.copy(centre).normalize().multiplyScalar(s * (0.9 + random * 1.7)).add(centre);
+  out.y -= s * s * (0.9 + random * 1.1);
+  return out;
 }
 
 type HeartProps = {
@@ -283,6 +370,18 @@ type HeartProps = {
   onTap?: () => void;
   /** Fired once, when the last fragment has faded — lets the parent unmount us. */
   onShatterDone?: () => void;
+  /**
+   * Fired on the frame the heart breaks, with every shard's screen-space
+   * trajectory. Each one becomes a butterfly.
+   */
+  onShardsLaunch?: (launch: ShardLaunch) => void;
+  /**
+   * Written every frame with the current beat envelope, so whatever is caged
+   * inside can move with it. A ref, not a prop: this changes at 60fps.
+   */
+  pulseOut?: React.MutableRefObject<number>;
+  /** Where the glass was just struck, in the heart's own local space. */
+  onStrike?: (local: THREE.Vector3) => void;
 };
 
 export default function Heart({
@@ -292,6 +391,9 @@ export default function Heart({
   shattering,
   onTap,
   onShatterDone,
+  onShardsLaunch,
+  pulseOut,
+  onStrike,
 }: HeartProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const phaseRef = useRef(0);
@@ -299,6 +401,7 @@ export default function Heart({
   const shatterRef = useRef(0);
   const shatterStartRef = useRef<number | null>(null);
   const firedRef = useRef(false);
+  const launchedRef = useRef(false);
 
   const material = useMemo(
     () =>
@@ -310,6 +413,23 @@ export default function Heart({
           uAwaken: { value: 0 },
           uPulse: { value: 0 },
           uShatter: { value: 0 },
+          // Drawn once per mount, so the heart cracks somewhere new on every
+          // visit. Kept modest: the noise stays precise at these magnitudes,
+          // and a few units is already a completely different neighbourhood
+          // of the field.
+          uSeed: {
+            value: new THREE.Vector3(
+              Math.random() * 40,
+              Math.random() * 40,
+              Math.random() * 40
+            ),
+          },
+          // Fixed-length, because a GLSL ES loop needs a constant bound.
+          // uTapCount says how many of them are real.
+          uTaps: {
+            value: Array.from({ length: MAX_TAPS }, () => new THREE.Vector3()),
+          },
+          uTapCount: { value: 0 },
         },
       }),
     []
@@ -317,6 +437,56 @@ export default function Heart({
 
   // We unmount once the shatter finishes; the geometry belongs to the scene.
   useEffect(() => () => material.dispose(), [material]);
+
+  // Where each shard is on screen at the instant it turns, and how fast it was
+  // going when it got there. The whole schedule is computed on the frame the
+  // heart breaks, so the swarm can be handed the trajectories in one piece.
+  const buildLaunch = (
+    camera: THREE.Camera,
+    canvas: HTMLCanvasElement
+  ): ShardLaunch | null => {
+    const chunks = geometry.userData.chunks as HeartChunk[] | undefined;
+    const mesh = meshRef.current;
+    if (!chunks?.length || !mesh) return null;
+
+    mesh.updateWorldMatrix(true, false);
+    const rect = canvas.getBoundingClientRect();
+    const local = new THREE.Vector3();
+    const world = new THREE.Vector3();
+    const ndc = new THREE.Vector3();
+    const camDist = camera.position.length() || 5; // the heart sits at the origin
+
+    const project = (centre: THREE.Vector3, random: number, s: number) => {
+      world.copy(shardAt(centre, random, s, local)).applyMatrix4(mesh.matrixWorld);
+      const dist = Math.max(0.001, world.distanceTo(camera.position));
+      ndc.copy(world).project(camera);
+      return {
+        x: (ndc.x * 0.5 + 0.5) * rect.width + rect.left,
+        y: (-ndc.y * 0.5 + 0.5) * rect.height + rect.top,
+        // a shard thrown towards us is nearer, so its butterfly is bigger
+        scale: camDist / dist,
+      };
+    };
+
+    const STEP = 0.02; // finite difference, in uShatter units
+    const shards: ShardSeed[] = chunks.map((ch) => {
+      const s = CONVERT_MIN + ch.random * CONVERT_SPAN;
+      const a = project(ch.centre, ch.random, s);
+      const b = project(ch.centre, ch.random, s + STEP);
+      const dt = STEP * SHATTER_SECONDS;
+      return {
+        x: a.x,
+        y: a.y,
+        vx: (b.x - a.x) / dt,
+        vy: (b.y - a.y) / dt,
+        t: s * SHATTER_SECONDS,
+        scale: a.scale,
+        seed: ch.random,
+      };
+    });
+
+    return { launchAt: performance.now(), shards };
+  };
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
@@ -334,6 +504,9 @@ export default function Heart({
     } else {
       material.uniforms.uPulse.value = 0;
     }
+    // one beat, shared: whatever is inside moves on the same envelope the
+    // surface swells on, rather than on a second clock that would drift
+    if (pulseOut) pulseOut.current = material.uniforms.uPulse.value;
 
     // Shatter progression, driven by WALL-CLOCK time rather than accumulated
     // frame deltas. Deltas are clamped (above) to keep the pulse stable, but
@@ -341,11 +514,20 @@ export default function Heart({
     // frames it renders, the longer it would drag. This way it always takes
     // SHATTER_SECONDS of real time; a slow device simply shows fewer frames.
     if (shattering && shatterRef.current < 1) {
-      if (shatterStartRef.current === null) shatterStartRef.current = now;
+      if (shatterStartRef.current === null) {
+        shatterStartRef.current = now;
+        // Work out where every shard will be at the moment it turns, before it
+        // has moved at all — the swarm needs the whole schedule up front.
+        if (!launchedRef.current) {
+          launchedRef.current = true;
+          const launch = buildLaunch(state.camera, state.gl.domElement);
+          if (launch) onShardsLaunch?.(launch);
+        }
+      }
       const t = Math.min(1, (now - shatterStartRef.current) / SHATTER_SECONDS);
       shatterRef.current = t;
       material.uniforms.uShatter.value = t;
-      if (t >= 1 && !firedRef.current) {
+      if (t >= SHATTER_END && !firedRef.current) {
         firedRef.current = true;
         onShatterDone?.();
       }
@@ -367,9 +549,29 @@ export default function Heart({
       geometry={geometry}
       material={material}
       rotation={[0, 0, -0.08]}
+      // Drawn after whatever is caged inside it, so the glass blends over
+      // them rather than the other way round. Left to distance sorting alone
+      // this flickers as the heart drifts.
+      renderOrder={1}
       onPointerDown={(e) => {
         e.stopPropagation();
         if (firedRef.current && shattering) return;
+
+        // Remember where it was hit, in the heart's own space. The raycast
+        // lands on the undisplaced geometry, which is exactly the space vPos
+        // is in, so the shader can compare the two directly.
+        const mesh = meshRef.current;
+        if (mesh) {
+          const local = mesh.worldToLocal(e.point.clone());
+          const taps = material.uniforms.uTaps.value as THREE.Vector3[];
+          const n = material.uniforms.uTapCount.value as number;
+          if (n < MAX_TAPS) {
+            taps[n].copy(local);
+            material.uniforms.uTapCount.value = n + 1;
+          }
+          onStrike?.(local);
+        }
+
         onTap?.();
       }}
     />

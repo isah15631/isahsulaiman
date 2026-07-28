@@ -128,7 +128,7 @@ The intro is a **five-tap** sequence on the heart, then a silent welcome, then E
   1. `hello.`  → wait ~2s
   2. `welcome.`  → wait ~2s
   3. `I'm Isah Sulaiman.`  → wait ~3s
-  4. `I build beautiful things.`
+  4. `I build cool things.`
 
 - All text: lowercase where appropriate · **fade in slowly** · elegant & minimal.
 - **No** job titles, skill percentages, or achievements. This is **introduction, not self-promotion.**
