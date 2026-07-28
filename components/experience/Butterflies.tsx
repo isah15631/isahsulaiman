@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { ShardLaunch } from "@/lib/shards";
+import { SWARM } from "@/lib/palette";
 
 // The eruption swarm, drawn on ONE 2D canvas.
 //
@@ -18,7 +19,7 @@ import type { ShardLaunch } from "@/lib/shards";
 //
 // (three.js stays reserved for the heart; this is plain canvas 2D.)
 
-const COLORS = ["#c9304a", "#f2b544", "#2fa980", "#4fd1e0", "#f7f3ea", "#8b6bd1"];
+const COLORS = SWARM;
 const FLAP_FRAMES = 7; // ping-ponged, so 12 distinct poses
 const SPRITE_PX = 56;
 /** How long the shard's momentum takes to bleed off into a butterfly's own flight. */
