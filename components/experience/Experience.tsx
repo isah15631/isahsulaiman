@@ -1,18 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { STAGES, FINAL_TAP, type Phase } from "@/lib/stages";
 import type { ShardLaunch } from "@/lib/shards";
-import {
-  startAudio,
-  setHeartbeat,
-  playCrack,
-  playShatter,
-  playSwell,
-  stopHeartbeat,
-} from "@/lib/audio";
+import { startAudio, playShatter, playSwell } from "@/lib/audio";
 import Butterflies from "./Butterflies";
 import Doorway from "./Doorway";
 import LastButterfly from "./LastButterfly";
@@ -20,23 +11,39 @@ import WelcomeSequence from "./WelcomeSequence";
 import Sections from "./Sections";
 
 // three.js must never render on the server.
-const HeartScene = dynamic(() => import("./HeartScene"), { ssr: false });
+const OrbScene = dynamic(() => import("./OrbScene"), { ssr: false });
+
+type Phase =
+  | "fall"
+  | "eruption"
+  | "silence"
+  | "welcome"
+  | "explore"
+  | "sections";
+
+/**
+ * How long after the landing the WebGL canvas can be dropped. Not when the last
+ * piece of glass fades: the concrete is still lit for a good while after that,
+ * and it is the light going out that ends the shot, not the glass.
+ *
+ * Longer than it was, because there is now something down there worth looking at
+ * while the swarm leaves — a floor, and a hole in it.
+ */
+const CANVAS_OUT = 4600;
+
 
 export default function Experience() {
-  const [taps, setTaps] = useState(0);
-  const [phase, setPhase] = useState<Phase>("intro");
-  const [glow, setGlow] = useState(0); // warmth radiating from the heart
+  const [phase, setPhase] = useState<Phase>("fall");
+  const [glow, setGlow] = useState(0); // warmth radiating from the impact
   const [world, setWorld] = useState(0); // warmth filling the whole screen
-  // Once the last fragment fades we drop the WebGL canvas entirely, so the
+  // Once the floor has gone dark we drop the WebGL canvas entirely, so the
   // butterflies have the frame to themselves.
-  const [heartGone, setHeartGone] = useState(false);
-  // Every shard of the broken heart, with the moment and the heading at which
-  // it turns into a butterfly. Handed over on the frame the heart breaks.
+  const [orbGone, setOrbGone] = useState(false);
+  // Every piece of the broken sphere, with the moment and the heading at which
+  // it turns into a butterfly. Handed over on the frame it lands.
   const [launch, setLaunch] = useState<ShardLaunch | null>(null);
 
-  // refs mirror state so rapid taps accumulate synchronously (no stale closures)
-  const tapsRef = useRef(0);
-  const phaseRef = useRef<Phase>("intro");
+  const phaseRef = useRef<Phase>("fall");
   const timers = useRef<number[]>([]);
 
   const goPhase = useCallback((p: Phase) => {
@@ -52,14 +59,36 @@ export default function Experience() {
     return () => timers.current.forEach((t) => window.clearTimeout(t));
   }, []);
 
-  const erupt = useCallback(() => {
+  /**
+   * Nobody taps any more, and that is a problem for sound: browsers will not
+   * let a page make a noise until the visitor has done something, and this
+   * piece never asks them to do anything.
+   *
+   * So: try immediately, in case this browser allows it, and also listen for
+   * the first gesture of ANY kind — a click anywhere, a key, a touch — and try
+   * again then. On a cold, untouched load the landing may well be silent. The
+   * alternative is a "click to begin" gate, which is the interaction that was
+   * just removed on purpose.
+   */
+  useEffect(() => {
+    startAudio();
+    const unlock = () => startAudio();
+    const opts = { passive: true } as const;
+    window.addEventListener("pointerdown", unlock, opts);
+    window.addEventListener("keydown", unlock, opts);
+    window.addEventListener("touchstart", unlock, opts);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+  }, []);
+
+  const onImpact = useCallback(() => {
+    if (phaseRef.current !== "fall") return;
     goPhase("eruption");
     playShatter();
     setGlow(1);
-    // one last swell of the heartbeat, then it softly fades as life takes flight
-    const s = STAGES[FINAL_TAP];
-    setHeartbeat(s.beatRate, s.beatVolume);
-    stopHeartbeat();
 
     after(200, () => {
       playSwell();
@@ -67,6 +96,8 @@ export default function Experience() {
     });
     // Nothing else. The break and the swell carry the moment between them; a
     // third sound on top read as a game pickup.
+
+    after(CANVAS_OUT, () => setOrbGone(true));
 
     // butterflies leave → return to stillness
     after(7200, () => {
@@ -78,38 +109,17 @@ export default function Experience() {
     after(10200, () => goPhase("welcome"));
   }, [goPhase]);
 
-  const handleTap = useCallback(() => {
-    if (phaseRef.current !== "intro") return;
-    startAudio();
-
-    const next = tapsRef.current + 1;
-    tapsRef.current = next;
-    setTaps(next);
-
-    if (next < FINAL_TAP) {
-      playCrack();
-      const s = STAGES[next];
-      setHeartbeat(s.beatRate, s.beatVolume);
-      setGlow(s.glow);
-    } else if (next === FINAL_TAP) {
-      erupt();
-    }
-  }, [erupt]);
-
-  const stage = STAGES[Math.min(taps, FINAL_TAP)];
-  const shattering = phase === "eruption";
-
   return (
     // 100dvh, not 100vh: on mobile browsers 100vh includes the address bar, so
     // vh crops the bottom of the frame and shifts as the chrome hides.
     <main className="relative h-[100dvh] w-full overflow-hidden bg-black">
-      {/* warm glow radiating from the heart */}
+      {/* warm glow thrown out by the impact */}
       <div
         className="pointer-events-none fixed inset-0 transition-opacity duration-[1500ms] ease-out"
         style={{
           opacity: glow,
           background:
-            "radial-gradient(45% 45% at 50% 52%, rgba(255,110,60,0.55), rgba(255,80,40,0.12) 45%, transparent 70%)",
+            "radial-gradient(45% 45% at 50% 62%, rgba(255,110,60,0.55), rgba(255,80,40,0.12) 45%, transparent 70%)",
         }}
       />
       {/* the whole world turning warm during the eruption */}
@@ -118,51 +128,21 @@ export default function Experience() {
         style={{
           opacity: world * 0.9,
           background:
-            "radial-gradient(120% 120% at 50% 45%, rgba(60,20,10,0.9), rgba(20,8,6,0.96) 60%, rgba(6,4,4,1))",
+            "radial-gradient(120% 120% at 50% 55%, rgba(60,20,10,0.9), rgba(20,8,6,0.96) 60%, rgba(6,4,4,1))",
         }}
       />
 
-      {/* the heart itself (present only while it lives / breaks) */}
-      {(phase === "intro" || phase === "eruption") && !heartGone && (
+      {/* Space, the fall out of it, the air on the way down, the floor at the
+          bottom and the light that arrives with the impact. All one scene and one
+          camera: there is no cut anywhere in the intro now, because the moon that
+          was hanging up there is the sphere that breaks down here. */}
+      {(phase === "fall" || phase === "eruption") && !orbGone && (
         <div className="absolute inset-0 z-10">
-          <HeartScene
-            targetAwaken={stage.awaken}
-            beatRate={stage.beatRate}
-            shattering={shattering}
-            onTap={handleTap}
-            onShatterDone={() => setHeartGone(true)}
-            onShardsLaunch={setLaunch}
-          />
+          <OrbScene onImpact={onImpact} onShardsLaunch={setLaunch} />
         </div>
       )}
 
-      {/* the single word — the only instruction, dormant stage only */}
-      <AnimatePresence>
-        {phase === "intro" && taps === 0 && (
-          <motion.p
-            // Sat at 18% it landed on the heart's own dark underside and was
-            // effectively invisible. Lower, brighter, and lifted clear of the
-            // silhouette — it is the only instruction in the whole piece.
-            className="pointer-events-none absolute inset-x-0 bottom-[9%] z-20 text-center font-serif text-2xl font-light lowercase tracking-[0.35em] text-neutral-100/90 sm:text-3xl"
-            style={{ textShadow: "0 0 18px rgba(0,0,0,0.9)" }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.95, 0.6, 0.95] }}
-            exit={{ opacity: 0, transition: { duration: 0.8, delay: 0 } }}
-            transition={{
-              duration: 5.4,
-              delay: 0.8,
-              ease: "easeInOut",
-              times: [0, 0.3, 0.65, 1],
-              repeat: Infinity,
-              repeatType: "reverse",
-            }}
-          >
-            tap.
-          </motion.p>
-        )}
-      </AnimatePresence>
-
-      {/* the eruption — the shards themselves, once they turn */}
+      {/* the eruption — the pieces themselves, once they turn */}
       {phase === "eruption" && launch && <Butterflies launch={launch} />}
 
       {/* the straggler, still leaving through the silence */}

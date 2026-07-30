@@ -6,7 +6,7 @@ import { SWARM } from "@/lib/palette";
 
 // The eruption swarm, drawn on ONE 2D canvas.
 //
-// Nothing escapes from inside the heart. Every butterfly here IS a shard: the
+// Nothing escapes from inside the sphere. Every butterfly here IS a piece of it: the
 // 3D scene hands over each piece's screen position and velocity at the moment
 // it flares out, and one butterfly opens in its place, carrying that same
 // momentum before it settles into flight of its own.
@@ -17,7 +17,7 @@ import { SWARM } from "@/lib/palette";
 // once, and the frame loop only blits them — so the cost is a few hundred
 // textured quads instead of hundreds of live DOM nodes.
 //
-// (three.js stays reserved for the heart; this is plain canvas 2D.)
+// (three.js stays reserved for the sphere; this is plain canvas 2D.)
 
 const COLORS = SWARM;
 const FLAP_FRAMES = 7; // ping-ponged, so 12 distinct poses
@@ -171,10 +171,11 @@ export default function Butterflies({ launch }: { launch: ShardLaunch }) {
         wanderPh: r1 * Math.PI * 2,
       };
     })
-      // On a portrait phone the heart fills the width, so a fifth of the shards
-      // have crossed the edge by the time their moment comes. Their butterflies
-      // would be born outside the frame and fly further out — never seen, and
-      // never worth a sprite on the device that can least afford one.
+      // On a portrait phone the spray of glass reaches past the sides, so some
+      // pieces have crossed the edge by the time their moment comes. Their
+      // butterflies would be born outside the frame and fly further out —
+      // never seen, and never worth a sprite on the device that can least
+      // afford one.
       // On whichever axis it is already off the frame, it has to be heading
       // back in to be worth drawing.
       .filter((s) => {

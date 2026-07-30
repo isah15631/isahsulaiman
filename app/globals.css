@@ -82,6 +82,33 @@ body {
   to { transform: scaleX(0.42); }
 }
 
+/* The hobby objects wear feathered wings, not a butterfly's, and they are far
+   larger relative to what they carry. A butterfly's flap folds to 0.42 of its
+   width, which on a wing this size does not read as beating — it reads as the
+   feathers collapsing shut. So they get their own, much shallower beat, with a
+   little rotation about the shoulder: turning the whole wing is what stops a
+   big one reading as a flat sheet being squashed sideways.
+
+   The rotation direction comes out mirrored on the left wing, because its
+   parent group is mirrored, and that is exactly what symmetry wants. */
+.wingbeat {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation-name: wingbeat;
+  animation-duration: var(--beat, 1s);
+  animation-delay: var(--beat-offset, 0s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  will-change: transform;
+}
+
+@keyframes wingbeat {
+  from { transform: scaleX(1) rotate(0deg); }
+  to { transform: scaleX(0.87) rotate(-8deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .butterfly__wing { animation: none; transform: scaleX(0.75); }
+  .wingbeat { animation: none; transform: scaleX(0.94); }
 }

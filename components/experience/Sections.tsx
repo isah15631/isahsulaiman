@@ -5,21 +5,31 @@ import {
   motion,
   type Variants,
 } from "framer-motion";
-import { useState } from "react";
-import { ABOUT, PROJECTS, EXPERIMENTS, CONTACT, STACK } from "@/lib/content";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  ABOUT,
+  PROJECTS,
+  HOBBIES,
+  CONTACT,
+  STACK,
+  type Hobby,
+} from "@/lib/content";
 import { SWARM } from "@/lib/palette";
 import { playClick } from "@/lib/audio";
-import Butterfly from "./Butterfly";
 import Carrier from "./Carrier";
+import Companion from "./Companion";
+import HobbyObject from "./HobbyObject";
+import HobbyScroll from "./HobbyScroll";
 import LightBulb from "./LightBulb";
 import PortraitAssembly from "./PortraitAssembly";
-import Wall from "./Wall";
+import RoomButterflies from "./RoomButterflies";
 
-type SectionKey = "about" | "projects" | "experiments" | "contact";
+type SectionKey = "about" | "projects" | "hobbies" | "contact";
 const MENU: { key: SectionKey; label: string }[] = [
   { key: "about", label: "About" },
   { key: "projects", label: "Projects" },
-  { key: "experiments", label: "Experiments" },
+  { key: "hobbies", label: "Hobbies" },
   { key: "contact", label: "Contact" },
 ];
 
@@ -81,17 +91,8 @@ const room: Variants = {
   }),
 };
 
-// A pane is a wall with something on it.
-//
-// The wall is pinned to the pane and the content scrolls over it, which is why
-// these are two elements rather than one: hang the wall inside the scroller and
-// it slides away the moment you read past the fold, and a wall that scrolls is
-// a poster. Both travel together during a fall, so what you drop past is the
-// wall itself.
-const PANE = "absolute inset-0";
 /** Each pane owns its own scrolling, so neither can disturb the other's. */
-const SCROLLER =
-  "absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar";
+const PANE = "absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar";
 
 // The portrait's shape: a dome at the top, gently rounded below. Not a full
 // oval, which crops a head into a locket, and not a rectangle, which was the
@@ -215,14 +216,32 @@ export default function Sections() {
     // is falling past the other they would otherwise share a scrollbar and
     // fight over its height.
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#070504] text-neutral-200">
-      {/* The warm vignette that used to live here is gone. Each wall carries
-          its own lamplight now, which is better than a fixed wash over the top:
-          it travels with the pane, so during a fall the light falls off the
-          wall you are leaving instead of hanging in front of both of them.
+      {/* warm vignette so sections feel like the world the butterflies made */}
+      <motion.div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(120% 90% at 50% 0%, rgba(255,120,60,0.08), transparent 55%)",
+        }}
+        initial={false}
+        animate={{ opacity: lightOn ? 1 : 0.25 }}
+        transition={{ duration: 0.6 }}
+      />
 
-          The bare colour underneath stays. It is what shows in the gap between
-          two walls while you are dropping past them. */}
+      {/* Placed before the content on purpose. Positioned siblings with no
+          stacking of their own paint in DOM order, so they pass behind the
+          words rather than across them. */}
+      {/* lamp: the bulb is lit AND you are in the room with it, so there is
+          something to fly to. Down in a section it is above the ceiling. */}
+      <RoomButterflies lit={lightOn} lamp={lightOn && selected === null} />
 
+      {/* One of them comes down with you when you open a section, hangs there a
+          while, and climbs back out. Keyed on the section so each drop gets its
+          own, and mounted out here rather than in the pane so it does not travel
+          with the fall: it is doing its own falling. */}
+      <AnimatePresence>
+        {selected !== null && <Companion key={selected} lit={lightOn} />}
+      </AnimatePresence>
 
       {/* the cord, only once you are down here with the lamp above you */}
       <AnimatePresence>
@@ -248,79 +267,76 @@ export default function Sections() {
             exit="leave"
             className={PANE}
           >
-            <Wall lit={lightOn} lamp={lightOn} />
-            <div className={SCROLLER}>
-              <div className="relative flex min-h-full flex-col items-center justify-center">
-                <LightBulb
-                  on={lightOn}
-                  onToggle={() => setLightOn((v) => !v)}
-                />
+            <div className="relative flex min-h-full flex-col items-center justify-center">
+              <LightBulb
+                on={lightOn}
+                onToggle={() => setLightOn((v) => !v)}
+              />
 
-                {/* The menu only exists while the light is on. Off, the room is
-                    dark and there is nothing to read or click.
+              {/* The menu only exists while the light is on. Off, the room is
+                  dark and there is nothing to read or click.
 
-                    It is lit, not faded in. Light does not make a thing arrive, it
-                    makes a thing visible, so the words brighten from almost unlit,
-                    overshoot as the filament surges, and settle. The stagger runs
-                    top to bottom because that is the direction the cone travels,
-                    and the warm halo is the tungsten catching the letterforms
-                    before it settles to a glow.
+                  It is lit, not faded in. Light does not make a thing arrive, it
+                  makes a thing visible, so the words brighten from almost unlit,
+                  overshoot as the filament surges, and settle. The stagger runs
+                  top to bottom because that is the direction the cone travels,
+                  and the warm halo is the tungsten catching the letterforms
+                  before it settles to a glow.
 
-                    Brightness rather than colour on purpose: an inline `color`
-                    would outrank the hover:text-ember class and kill the hover. */}
-                <motion.nav
-                  className="relative z-10 mt-[26vh] flex flex-col items-center gap-6"
-                  aria-hidden={!lightOn}
-                  // dims as the lamp swings off them; the per-item lighting below
-                  // is a separate filter and the two compose
-                  style={{ filter: LIT }}
-                >
-                  {MENU.map((m, i) => (
-                    <motion.button
-                      key={m.key}
-                      onClick={() => open(m.key)}
-                      tabIndex={lightOn ? 0 : -1}
-                      initial={false}
-                      animate={
-                        lightOn
-                          ? {
-                              opacity: [0, 1, 1],
-                              filter: [
-                                "brightness(0.15)",
-                                "brightness(1.18)",
-                                "brightness(1)",
-                              ],
-                              textShadow: [
-                                "0 0 0px rgba(255,190,110,0)",
-                                "0 0 20px rgba(255,190,110,0.5)",
-                                "0 0 9px rgba(255,190,110,0.16)",
-                              ],
-                            }
-                          : {
-                              opacity: 0,
-                              filter: "brightness(0.15)",
-                              textShadow: "0 0 0px rgba(255,190,110,0)",
-                            }
-                      }
-                      transition={
-                        lightOn
-                          ? {
-                              duration: 0.85,
-                              times: [0, 0.35, 1],
-                              delay: 0.1 + i * 0.12,
-                              ease: "easeOut",
-                            }
-                          : { duration: 0.3, ease: "easeOut" }
-                      }
-                      className={`font-serif text-3xl font-light tracking-wide text-neutral-200 transition-colors duration-500 hover:text-ember md:text-5xl ${
-                        lightOn ? "" : "pointer-events-none"
-                      }`}
-                    >
-                      {m.label}
-                    </motion.button>
-                  ))}
-                </motion.nav>
-              </div>
+                  Brightness rather than colour on purpose: an inline `color`
+                  would outrank the hover:text-ember class and kill the hover. */}
+              <motion.nav
+                className="relative z-10 mt-[26vh] flex flex-col items-center gap-6"
+                aria-hidden={!lightOn}
+                // dims as the lamp swings off them; the per-item lighting below
+                // is a separate filter and the two compose
+                style={{ filter: LIT }}
+              >
+                {MENU.map((m, i) => (
+                  <motion.button
+                    key={m.key}
+                    onClick={() => open(m.key)}
+                    tabIndex={lightOn ? 0 : -1}
+                    initial={false}
+                    animate={
+                      lightOn
+                        ? {
+                            opacity: [0, 1, 1],
+                            filter: [
+                              "brightness(0.15)",
+                              "brightness(1.18)",
+                              "brightness(1)",
+                            ],
+                            textShadow: [
+                              "0 0 0px rgba(255,190,110,0)",
+                              "0 0 20px rgba(255,190,110,0.5)",
+                              "0 0 9px rgba(255,190,110,0.16)",
+                            ],
+                          }
+                        : {
+                            opacity: 0,
+                            filter: "brightness(0.15)",
+                            textShadow: "0 0 0px rgba(255,190,110,0)",
+                          }
+                    }
+                    transition={
+                      lightOn
+                        ? {
+                            duration: 0.85,
+                            times: [0, 0.35, 1],
+                            delay: 0.1 + i * 0.12,
+                            ease: "easeOut",
+                          }
+                        : { duration: 0.3, ease: "easeOut" }
+                    }
+                    className={`font-serif text-3xl font-light tracking-wide text-neutral-200 transition-colors duration-500 hover:text-ember md:text-5xl ${
+                      lightOn ? "" : "pointer-events-none"
+                    }`}
+                  >
+                    {m.label}
+                  </motion.button>
+                ))}
+              </motion.nav>
             </div>
           </motion.div>
         ) : (
@@ -333,34 +349,28 @@ export default function Sections() {
             exit="leave"
             className={PANE}
           >
-            {/* The same wall, further down. What is written here is written on
-                it, which is the point: you did not open a page, you dropped to
-                another face of the room you are already in. */}
-            <Wall lit={lightOn} lamp={false} />
-            <div className={SCROLLER}>
-              {/* Kill the light in here and the reading goes with it. Opacity
-                  only: pointer events and the accessibility tree are left alone,
-                  because a screen reader turning off a lamp it cannot see should
-                  not lose the page. */}
-              <motion.section
-                className="relative mx-auto min-h-full w-full max-w-3xl px-6 py-24"
-                initial={false}
-                animate={{ opacity: lightOn ? 1 : 0.045 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+            {/* Kill the light in here and the reading goes with it. Opacity
+                only: pointer events and the accessibility tree are left alone,
+                because a screen reader turning off a lamp it cannot see should
+                not lose the page. */}
+            <motion.section
+              className="relative mx-auto min-h-full w-full max-w-3xl px-6 py-24"
+              initial={false}
+              animate={{ opacity: lightOn ? 1 : 0.045 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <button
+                onClick={back}
+                className="mb-16 font-sans text-sm tracking-widest text-neutral-500 transition-colors hover:text-ember"
               >
-                <button
-                  onClick={back}
-                  className="mb-16 font-sans text-sm tracking-widest text-neutral-500 transition-colors hover:text-ember"
-                >
-                  ← back
-                </button>
+                ← back
+              </button>
 
-                {selected === "about" && <About />}
-                {selected === "projects" && <Projects />}
-                {selected === "experiments" && <Experiments />}
-                {selected === "contact" && <Contact />}
-              </motion.section>
-            </div>
+              {selected === "about" && <About />}
+              {selected === "projects" && <Projects />}
+              {selected === "hobbies" && <Hobbies />}
+              {selected === "contact" && <Contact />}
+            </motion.section>
           </motion.div>
         )}
       </AnimatePresence>
@@ -579,92 +589,106 @@ function Projects() {
   );
 }
 
-// Each card is lent one of the swarm's colours. Gold and bone are left out:
-// both glow near enough to the lamp's own light that the card stops reading as
-// coloured and starts reading as lit.
-const CARD_COLORS = [SWARM[0], SWARM[2], SWARM[3], SWARM[5]];
+// Each object is lent one of the swarm's colours, cycled. The whole set, gold
+// and bone included: the reason those two were kept off the old cards was that
+// a coloured glow behind a panel of text stops reading as colour and starts
+// reading as lamplight. Nothing here is a panel. The colour is a soft wash
+// behind a drawn object and a fill in its wings, and at that job gold is one of
+// the best of them.
+const HOBBY_COLORS = SWARM;
+
+/** Matches the object's own aspect, so the grid does not reflow when one leaves. */
+const OBJECT_SIZE = 152;
+const OBJECT_BOX = Math.round((OBJECT_SIZE * 78) / 116);
 
 /**
- * The butterfly that had been resting on the card, leaving it.
+ * The shelf.
  *
- * Mounted fresh on every hover, keyed on a counter, so the flight replays
- * instead of a single instance having to be reset. It fades up at the corner
- * rather than sliding in from outside, because it was supposed to have been
- * sitting there the whole time and simply not noticed.
+ * Seven objects hanging in the dark, each wearing the swarm's wings. The name
+ * is a caption underneath rather than a label on top, because the object is
+ * meant to be the thing you read first.
+ *
+ * While one is open, its instance is deliberately NOT rendered here. Two
+ * elements sharing a layoutId at the same time is a conflict, and the shared
+ * transition works precisely by one unmounting as the other mounts — so the
+ * grid keeps a same-sized hole where the object was, and the object itself is
+ * now sitting at the top of the scroll.
  */
-function Escapee({ color, drift }: { color: string; drift: number }) {
-  return (
-    <motion.div
-      className="pointer-events-none absolute right-4 top-4 z-10"
-      initial={{ opacity: 0, scale: 0.45, x: 0, y: 0, rotate: -10 }}
-      animate={{
-        opacity: [0, 1, 1, 0],
-        scale: [0.45, 1, 1, 0.92],
-        x: [0, 12 * drift, 30 * drift, 54 * drift],
-        y: [0, -24, -56, -96],
-        rotate: [-10, 7, -5, 12],
-      }}
-      transition={{ duration: 2.3, ease: "easeOut", times: [0, 0.16, 0.58, 1] }}
-    >
-      <Butterfly color={color} size={18} flapDuration={0.24 + drift * 0.05} />
-    </motion.div>
-  );
-}
+function Hobbies() {
+  const [open, setOpen] = useState<Hobby["key"] | null>(null);
+  // The scroll is a modal and has to be measured against the window, but every
+  // ancestor it has here is transformed — the pane the sections ride in moves
+  // on the y axis — and a transformed ancestor becomes the containing block for
+  // anything `fixed` inside it. So it goes to the body instead. React portals
+  // keep context, so the shared layout transition still finds its partner.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-function ExperimentCard({
-  item,
-  color,
-  drift,
-}: {
-  item: (typeof EXPERIMENTS)[number];
-  color: string;
-  drift: number;
-}) {
-  const [flights, setFlights] = useState(0);
-  // onTapStart as well as hover: a phone has no hover, and the card is not a
-  // link, so a touch has nothing else to do.
-  const release = () => setFlights((n) => n + 1);
+  const openIndex = HOBBIES.findIndex((h) => h.key === open);
+  const openHobby = openIndex >= 0 ? HOBBIES[openIndex] : null;
 
-  return (
-    <motion.div
-      onHoverStart={release}
-      onTapStart={release}
-      whileHover={{ y: -4, boxShadow: `0 0 70px -22px ${color}` }}
-      transition={{ type: "spring", stiffness: 250, damping: 20 }}
-      className="relative rounded-md border border-neutral-800 bg-white/[0.02] p-6"
-      style={{ boxShadow: `0 0 60px -30px ${color}` }}
-    >
-      {flights > 0 && <Escapee key={flights} color={color} drift={drift} />}
-      <p className="mb-1 font-sans text-[10px] uppercase tracking-[0.2em] text-neutral-500">
-        {item.tag}
-      </p>
-      <h3 className="mb-2 font-serif text-xl text-neutral-100">{item.title}</h3>
-      <p className="font-sans text-sm leading-relaxed text-neutral-400">
-        {item.blurb}
-      </p>
-    </motion.div>
-  );
-}
-
-function Experiments() {
   return (
     <div>
-      <Heading>Experiments</Heading>
-      <p className="-mt-6 mb-10 font-sans text-[11px] uppercase tracking-[0.2em] text-neutral-600">
-        Earlier work, 2015 to 2020
+      <Heading>Hobbies</Heading>
+      <p className="-mt-6 mb-12 font-sans text-[11px] uppercase tracking-[0.2em] text-neutral-600">
+        Pick one up
       </p>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {EXPERIMENTS.map((e, i) => (
-          <ExperimentCard
-            key={e.title}
-            item={e}
-            color={CARD_COLORS[i % CARD_COLORS.length]}
-            // right-hand cards send theirs off to the left, so no butterfly
-            // leaves straight through the neighbouring card
-            drift={i % 2 === 0 ? 1 : -1}
-          />
+
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
+        {HOBBIES.map((h, i) => (
+          <li key={h.key} className="flex justify-center">
+            <motion.button
+              type="button"
+              onClick={() => setOpen(h.key)}
+              aria-label={`Open ${h.title}`}
+              className="group flex flex-col items-center rounded-lg px-2 py-2 outline-none focus-visible:ring-1 focus-visible:ring-ember/60"
+              whileHover={{ y: -5 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 300, damping: 22 }}
+            >
+              <span
+                className="flex items-center justify-center"
+                style={{ height: OBJECT_BOX, width: OBJECT_SIZE }}
+              >
+                {open !== h.key && (
+                  <motion.span
+                    layoutId={`hobby-${h.key}`}
+                    className="block"
+                    transition={{ duration: 0.5, ease: [0.32, 0.72, 0.24, 1] }}
+                  >
+                    <HobbyObject
+                      hobby={h.key}
+                      color={HOBBY_COLORS[i % HOBBY_COLORS.length]}
+                      size={OBJECT_SIZE}
+                      phase={i}
+                    />
+                  </motion.span>
+                )}
+              </span>
+              {/* No caption. The name is carried only by the button's
+                  accessible label, which a screen reader needs and a visitor
+                  does not get: working out what you are holding is the point
+                  of picking it up. */}
+            </motion.button>
+          </li>
         ))}
-      </div>
+      </ul>
+
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {openHobby && (
+              <HobbyScroll
+                key={openHobby.key}
+                hobby={openHobby}
+                color={HOBBY_COLORS[openIndex % HOBBY_COLORS.length]}
+                phase={openIndex}
+                onClose={() => setOpen(null)}
+              />
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }

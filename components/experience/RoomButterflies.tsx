@@ -227,12 +227,7 @@ export default function RoomButterflies({ lit, lamp }: Props) {
 
   return (
     <motion.div
-      // absolute, not fixed: this lives inside a wall now, and a wall is
-      // inside a pane that gets a transform during a fall. A fixed child of a
-      // transformed ancestor is contained by it, so `fixed` would mean one
-      // thing mid-fall and another at rest, and the swarm would jump at the
-      // moment the transform cleared.
-      className="pointer-events-none absolute inset-0 z-0"
+      className="pointer-events-none fixed inset-0 z-0"
       aria-hidden
       initial={false}
       // the lamp reveals them; dark, they are barely a suggestion

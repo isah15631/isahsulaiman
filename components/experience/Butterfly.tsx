@@ -16,10 +16,15 @@ type ButterflyProps = {
 };
 
 // Right-hand wings, drawn in a 100×100 box with the body along x = 50.
-const FOREWING = "M50,44 C54,26 66,10 80,6 C92,3 97,14 94,28 C90,44 72,54 56,52 Z";
-const HINDWING = "M54,54 C68,54 82,62 84,74 C86,86 74,92 64,84 C56,77 52,64 54,54 Z";
+//
+// Exported because the hobbies wear these too. A book with wings only works if
+// they are recognisably the swarm's wings and not a second, similar pair.
+export const FOREWING =
+  "M50,44 C54,26 66,10 80,6 C92,3 97,14 94,28 C90,44 72,54 56,52 Z";
+export const HINDWING =
+  "M54,54 C68,54 82,62 84,74 C86,86 74,92 64,84 C56,77 52,64 54,54 Z";
 
-function Wings({ color }: { color: string }) {
+export function Wings({ color }: { color: string }) {
   return (
     <>
       <path d={FOREWING} fill={color} />

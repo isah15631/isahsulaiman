@@ -22,10 +22,14 @@ import Butterfly from "./Butterfly";
  * thing you see rhymes with the first.
  */
 
-/** The welcome's own timing, in seconds, and the default for anything else. */
+/**
+ * Fallback timing, in seconds. Both callers pass their own — WelcomeSequence
+ * and the contact address each own the pacing of their own moment — so these
+ * only apply to a caller that does not care.
+ */
 const LIFT_DELAY = 0.35;
-const RELEASE_AT = 4.3;
-const TOTAL = 6.2;
+const RELEASE_AT = 4.15;
+const TOTAL = 4.95;
 
 type Props = {
   color: string;
@@ -73,6 +77,13 @@ export default function Carrier({
   // placed from this one number.
   const knot = { opacity: [0, 0.95, 0.95, 0] };
 
+  // The easing point partway through the departure, as a FRACTION of however
+  // long the departure actually is. It used to be a flat 0.9s after release,
+  // which is fine for a long drift and out of order for a short one — a
+  // caller who wants them gone quickly would push this keyframe past the end
+  // of the animation, and Framer needs `times` strictly increasing.
+  const midAway = releaseAt + (total - releaseAt) * 0.45;
+
   return (
     <motion.div
       className="pointer-events-none absolute"
@@ -87,13 +98,7 @@ export default function Carrier({
       transition={{
         duration: total,
         ease: "easeInOut",
-        times: [
-          0,
-          liftDelay / total,
-          releaseAt / total,
-          (releaseAt + 0.9) / total,
-          1,
-        ],
+        times: [0, liftDelay / total, releaseAt / total, midAway / total, 1],
       }}
     >
       {/* Grows upward from the anchor. Plain CSS transform, not a motion prop:

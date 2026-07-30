@@ -7,8 +7,7 @@ import Carrier from "./Carrier";
 // The whispered introduction. One line at a time, slow and elegant.
 // The first line is carried into view by two butterflies, who then let go.
 const LINES = [
-  { text: "hello.", hold: 6400 },
-  { text: "welcome.", hold: 2200 },
+  { text: "hello.", hold: 5150 },
   { text: "i'm Isah Sulaiman.", hold: 3200 },
   { text: "i build cool things.", hold: 3600 },
 ];
@@ -28,11 +27,15 @@ const LIFT_DELAY = 0.35;
 // than a hundred pixels.
 const LIFT_SECONDS = 3.4;
 // The carriers hold on a moment after the word settles, then leave.
-const RELEASE_AT = LIFT_DELAY + LIFT_SECONDS + 0.55;
+const RELEASE_AT = LIFT_DELAY + LIFT_SECONDS + 0.4;
 
 // Has to stay inside the first line's hold, or the word changes while they are
-// still drifting away from it.
-const TOTAL = RELEASE_AT + 1.9;
+// still drifting away from it — so this number and the hold above move
+// together. Kept short: once they have let go the moment is over, and the two
+// seconds they used to spend drifting off were two seconds of nothing
+// happening with the whole introduction waiting behind them. They leave
+// quickly now, which also reads better — a decision rather than a fade.
+const TOTAL = RELEASE_AT + 0.8;
 
 export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
   const [index, setIndex] = useState(0);
@@ -72,7 +75,17 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
                   }
                 : { opacity: 1, y: 0 }
             }
-            exit={{ opacity: 0, y: -6 }}
+            // The exit carries its OWN transition. Without one it inherits the
+            // block below, and for the first line that is the lift: 3.4s plus
+            // a 0.35s delay. So "hello." spent nearly four seconds fading out
+            // — with AnimatePresence in "wait" mode holding the entire rest of
+            // the introduction behind it — and the whole sequence stalled
+            // right after the butterflies let go of it.
+            exit={{
+              opacity: 0,
+              y: -6,
+              transition: { duration: 0.45, ease: "easeInOut" },
+            }}
             transition={
               isFirst
                 ? { duration: LIFT_SECONDS, delay: LIFT_DELAY, ease: "easeOut" }
@@ -97,6 +110,9 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
                   tilt={-13}
                   threadEm={0.8}
                   away={{ x: -150, y: -110 }}
+                  liftDelay={LIFT_DELAY}
+                  releaseAt={RELEASE_AT}
+                  total={TOTAL}
                 />
                 <Carrier
                   side="right"
@@ -107,6 +123,9 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
                   tilt={13}
                   threadEm={1.0}
                   away={{ x: 160, y: -128 }}
+                  liftDelay={LIFT_DELAY}
+                  releaseAt={RELEASE_AT}
+                  total={TOTAL}
                 />
               </>
             )}

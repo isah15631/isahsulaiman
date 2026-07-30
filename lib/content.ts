@@ -1,4 +1,4 @@
-// Content for the four sections.
+// Content for the four sections: About, Projects, Hobbies, Contact.
 //
 // The projects, their categories, the two live URLs and the tech stack are all
 // REAL, carried over from the previous portfolio (legacy/vite-app/src/data.js).
@@ -134,48 +134,106 @@ export const PROJECTS: Project[] = [
   },
 ];
 
-export type Experiment = {
+/**
+ * A hobby is an object before it is a list.
+ *
+ * Each one is drawn as a small winged thing floating in the dark, and only
+ * becomes readable when you open it: the object unrolls into a scroll and the
+ * contents are what is written on it. So the copy here is deliberately thin.
+ * `intro` is the one line at the head of the scroll, and everything else is a
+ * labelled list, because a list of writers reads as a list and should look
+ * like one.
+ */
+export type Hobby = {
+  /** picks the glyph in HobbyObject, so these keys are not free-form */
+  key:
+    | "reading"
+    | "writing"
+    | "football"
+    | "systems"
+    | "reflection"
+    | "movies"
+    | "anime";
   title: string;
-  tag: string;
-  blurb: string;
-  href?: string;
+  intro: string;
+  lists?: { label: string; items: string[] }[];
 };
 
-// Smaller real builds, framed as explorations rather than flagships. All from
-// roughly 2015 to 2020, shown as a range on the section rather than a year per
-// card, since only the period is known.
-// TODO(isah): move any of these up into PROJECTS if they deserve it, and tell
-// me which are genuinely playful experiments versus commissioned work.
-export const EXPERIMENTS: Experiment[] = [
+// Reading is Isah's own, given verbatim, with the titles and names spelled the
+// way their covers spell them. Two of them were worth a second look:
+//   • "the man underground" is almost certainly Notes from Underground, the
+//     Dostoevsky. Say the word if you meant something else.
+//   • "windsmil of the gods" is Windmills of the Gods, the Sidney Sheldon.
+//
+// TODO(isah): the other six intros are mine, not yours. They claim nothing
+// beyond the name of the hobby itself, and they are placeholders. Tell me what
+// belongs on each scroll (the teams, the films, the series, what you write,
+// which systems you like thinking about) and I will replace them the way I
+// filled in reading.
+export const HOBBIES: Hobby[] = [
   {
-    title: "Expense Tracker",
-    tag: "Finance · PWA",
-    blurb: "Personal spending, installable and working offline.",
+    key: "reading",
+    title: "Reading",
+    intro: "The writers I keep going back to, and the books that sent me back.",
+    lists: [
+      {
+        label: "Writers",
+        items: [
+          "Franz Kafka",
+          "Fyodor Dostoevsky",
+          "Danielle Steel",
+          "Sidney Sheldon",
+          "Albert Camus",
+        ],
+      },
+      {
+        label: "Read",
+        items: [
+          "The Metamorphosis",
+          "The Stranger",
+          "White Nights",
+          "Notes from Underground",
+          "Crime and Punishment",
+          "Lone Eagle",
+          "If Tomorrow Comes",
+          "Windmills of the Gods",
+          "Tell Me Your Dreams",
+          "Bloodline",
+          "Master of the Game",
+        ],
+      },
+    ],
   },
   {
-    title: "E-Voting System",
-    tag: "Civic Tech",
-    blurb: "Casting and counting, with a trail you can audit afterwards.",
+    key: "writing",
+    title: "Writing",
+    intro: "Putting it down in words, which is a different kind of thinking.",
   },
   {
-    title: "Shika NAPRI Cooperative",
-    tag: "Fintech",
-    blurb: "Savings and loans for a cooperative society.",
+    key: "football",
+    title: "Football",
+    intro: "The game.",
   },
   {
-    title: "Farmers' Record System",
-    tag: "AgriTech",
-    blurb: "Field records kept by the people actually in the field.",
+    key: "systems",
+    title: "System Design",
+    intro:
+      "Boxes and arrows, moved around until the whole thing holds together.",
   },
   {
-    title: "Inventory & Invoicing",
-    tag: "Business",
-    blurb: "Stock in, invoice out, nothing in between to forget.",
+    key: "reflection",
+    title: "Self Reflection",
+    intro: "Sitting with the day before it turns into the next one.",
   },
   {
-    title: "Cement Plant Sales",
-    tag: "Business · ERP",
-    blurb: "Orders and dispatch tracked from weighbridge to gate.",
+    key: "movies",
+    title: "Movies",
+    intro: "Two hours, in the dark, with the phone face down.",
+  },
+  {
+    key: "anime",
+    title: "Anime",
+    intro: "Drawn, and somehow the more real for it.",
   },
 ];
 

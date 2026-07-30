@@ -1,8 +1,8 @@
 // The swarm's colours, in one place.
 //
-// These six are the butterflies that came out of the heart, and everything
+// These six are the butterflies that came out of the sphere, and everything
 // after the eruption is meant to be recognisably the same set: the portrait
-// assembles out of them, and each card in Experiments is lent one. The array
+// assembles out of them, and each object in Hobbies is lent one. The array
 // was copied into three separate files, which is how a palette quietly drifts
 // apart.
 export const SWARM = [
