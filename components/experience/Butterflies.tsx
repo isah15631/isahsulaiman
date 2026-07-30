@@ -75,12 +75,56 @@ function makeSprite(color: string, wingScale: number, px: number) {
 
   g.scale(px / 100, px / 100);
 
+  // Where the stars sit in the wing, in its own 100-unit space. The same four
+  // the svg butterflies wear, so the swarm that erupts and the swarm that
+  // crosses the room later are recognisably the same creature.
+  const GLINTS: [number, number, number, number][] = [
+    [78, 16, 2.6, 0.95],
+    [88, 30, 1.7, 0.72],
+    [66, 33, 1.9, 0.85],
+    [72, 71, 1.8, 0.7],
+  ];
+
+  // Deep at the root and gone by the rim, so the colour survives out at the edge
+  // where a wing is thin and the light is coming through it.
+  const wash = g.createRadialGradient(56, 46, 0, 56, 46, 46);
+  wash.addColorStop(0, "rgba(8,10,28,0.82)");
+  wash.addColorStop(0.45, "rgba(13,18,48,0.55)");
+  wash.addColorStop(1, "rgba(19,26,60,0)");
+
   const wings = () => {
     g.fillStyle = color;
     g.globalAlpha = 0.95;
     g.fill(fore);
     g.globalAlpha = 0.85;
     g.fill(hind);
+    g.globalAlpha = 1;
+
+    // The sky inside the membrane. Clipped to the wings so it cannot spill, and
+    // baked into the sprite, so a few hundred of these cost exactly what a few
+    // hundred flat ones did.
+    g.save();
+    g.beginPath();
+    g.clip(fore);
+    g.fillStyle = wash;
+    g.fillRect(40, 0, 64, 100);
+    g.restore();
+    g.save();
+    g.clip(hind);
+    g.fillStyle = wash;
+    g.fillRect(40, 0, 64, 100);
+    g.restore();
+
+    g.save();
+    g.beginPath();
+    g.fillStyle = "#ffffff";
+    for (const [x, y, r, a] of GLINTS) {
+      g.globalAlpha = a;
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
     g.globalAlpha = 1;
   };
 

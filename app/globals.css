@@ -108,7 +108,22 @@ body {
   to { transform: scaleX(0.87) rotate(-8deg); }
 }
 
+/* ---------------- The sky behind the room ----------------
+   Transform and opacity only, on three tiled layers, so all of this happens on
+   the compositor and the main thread never hears about it. */
+@keyframes nightsky-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 28px, 0); }
+}
+
+@keyframes nightsky-beat {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .butterfly__wing { animation: none; transform: scaleX(0.75); }
   .wingbeat { animation: none; transform: scaleX(0.94); }
+  /* The sky stays, because it is the picture. It just stops moving. */
+  [style*="nightsky-drift"] { animation: none !important; }
 }

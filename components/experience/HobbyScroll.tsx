@@ -13,10 +13,22 @@ import HobbyObject from "./HobbyObject";
 // two rods start together and are pushed apart by the parchment appearing
 // between them.
 //
-// The unroll is an animation on `height`, not a scaleY. Scaling is cheaper and
-// completely wrong here: it stretches the writing along with the paper, and a
-// scroll's whole trick is that the words were always that size and were simply
-// rolled up out of sight.
+// The unroll is not a scaleY. Scaling is cheaper and completely wrong here: it
+// stretches the writing along with the paper, and a scroll's whole trick is that
+// the words were always that size and were simply rolled up out of sight.
+//
+// It used to animate `height` instead, which honours that and was the reason this
+// dragged. Height is a layout property, so every frame of it re-laid out the
+// paper, the scrolling column inside it, every line of writing in that, and then
+// re-centred the whole dialog — which moved the rod and the object, which forced
+// the object's blurred colour wash to be re-blurred, and re-rasterised a sixty
+// pixel drop shadow. All of that, sixty times a second, to reveal some text.
+//
+// It is a clip now. The paper is laid out once at its full size and revealed from
+// the top down with an inset clip-path, which is a paint, not a layout: nothing
+// reflows, nothing re-centres, the blur and the shadow are rasterised once. The
+// writing still never stretches, because nothing is ever scaled. It also removes
+// a drift nobody asked for, since the group used to slide upward as it grew.
 
 /** Aged paper. Warm, because the only light in this room is a tungsten bulb. */
 const PARCHMENT =
@@ -83,7 +95,11 @@ export default function HobbyScroll({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 cursor-default bg-black/72 backdrop-blur-[3px]"
+        // No backdrop blur. It was three pixels of blur over the entire viewport,
+        // which is a full-screen filter pass on every frame of the unroll for an
+        // effect you cannot see behind a scrim this dark. The scrim does the
+        // separating; it is one composited layer and costs nothing.
+        className="absolute inset-0 cursor-default bg-black/80"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -113,9 +129,11 @@ export default function HobbyScroll({
 
         <motion.div
           className="w-full overflow-hidden"
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
+          // Revealed top down. `inset(0 0 100% 0)` hides all of it and 0% shows
+          // all of it, and in between the paper appears out from under the rod.
+          initial={{ clipPath: "inset(0 0 100% 0)", opacity: 0 }}
+          animate={{ clipPath: "inset(0 0 0% 0)", opacity: 1 }}
+          exit={{ clipPath: "inset(0 0 100% 0)", opacity: 0 }}
           transition={UNROLL}
         >
           <div
