@@ -35,6 +35,7 @@ export const STACK: { group: string; items: string[] }[] = [
     group: "Frontend",
     items: [
       "React",
+      "Next.js",
       "Vite",
       "Tailwind CSS",
       "PWAs",
