@@ -29,7 +29,15 @@ export const ABOUT = {
 export const STACK: { group: string; items: string[] }[] = [
   {
     group: "Languages",
-    items: ["JavaScript", "Python", "PHP", "SQL", "HTML5", "CSS3"],
+    items: [
+      "JavaScript",
+      "TypeScript",
+      "Python",
+      "PHP",
+      "SQL",
+      "HTML5",
+      "CSS3",
+    ],
   },
   {
     group: "Frontend",
