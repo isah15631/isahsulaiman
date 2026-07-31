@@ -29,7 +29,9 @@ type SectionKey = "about" | "projects" | "hobbies" | "contact";
 const MENU: { key: SectionKey; label: string }[] = [
   { key: "about", label: "About" },
   { key: "projects", label: "Projects" },
-  { key: "hobbies", label: "Hobbies" },
+  // The key stays "hobbies" — it is wired to a section, a palette slot and a
+  // dev route, and none of those are what a visitor reads.
+  { key: "hobbies", label: "Digressions" },
   { key: "contact", label: "Contact" },
 ];
 
@@ -630,7 +632,7 @@ function Hobbies() {
 
   return (
     <div>
-      <Heading>Hobbies</Heading>
+      <Heading>Digressions</Heading>
       <p className="-mt-6 mb-12 font-sans text-[11px] uppercase tracking-[0.2em] text-neutral-600">
         Pick one up
       </p>

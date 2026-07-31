@@ -145,15 +145,17 @@ export const PROJECTS: Project[] = [
  * like one.
  */
 export type Hobby = {
-  /** picks the glyph in HobbyObject, so these keys are not free-form */
-  key:
-    | "reading"
-    | "writing"
-    | "football"
-    | "systems"
-    | "reflection"
-    | "movies"
-    | "anime";
+  /**
+   * Identity only, now: the react key, the layoutId the object flies on, and
+   * which palette slot it is lent.
+   *
+   * It used to be a closed union because HobbyObject drew a different glyph for
+   * every one of them and an unknown key would have had nothing to draw. That
+   * component is gone — they are all the same winged scroll in a different
+   * colour — so adding a digression is a line of content again, which was the
+   * whole point of collapsing the drawings.
+   */
+  key: string;
   title: string;
   intro: string;
   lists?: { label: string; items: string[] }[];
@@ -215,6 +217,44 @@ export const HOBBIES: Hobby[] = [
     intro: "The game.",
   },
   {
+    key: "gaming",
+    title: "Gaming",
+    intro:
+      "Long campaigns, mostly. The ones you finish and then miss for a week.",
+    lists: [
+      {
+        label: "Prince of Persia",
+        items: [
+          "The Sands of Time (2003)",
+          "Warrior Within (2004)",
+          "The Two Thrones (2005)",
+          "The Forgotten Sands (2010)",
+          "The Shadow and the Flame",
+          "The Lost Crown",
+        ],
+      },
+      {
+        label: "Assassin's Creed",
+        items: [
+          "Assassin's Creed",
+          "Assassin's Creed II",
+          "Brotherhood",
+          "Revelations",
+          "Assassin's Creed III",
+          "Black Flag",
+        ],
+      },
+      {
+        label: "God of War",
+        items: ["Ghost of Sparta", "Chains of Olympus", "Betrayal"],
+      },
+      {
+        label: "Pitch and track",
+        items: ["FIFA", "EA Sports FC", "Car racing"],
+      },
+    ],
+  },
+  {
     key: "systems",
     title: "System Design",
     intro:
@@ -228,7 +268,110 @@ export const HOBBIES: Hobby[] = [
   {
     key: "movies",
     title: "Movies",
-    intro: "Two hours, in the dark, with the phone face down.",
+    intro:
+      "Two hours, in the dark, with the phone face down. Mind bending, psychological, adventure packed: the kind you are still turning over on the walk home.",
+    lists: [
+      {
+        label: "The Lord of the Rings",
+        items: [
+          "The Fellowship of the Ring",
+          "The Two Towers",
+          "The Return of the King",
+        ],
+      },
+      {
+        label: "Pirates of the Caribbean",
+        items: [
+          "The Curse of the Black Pearl",
+          "Dead Man's Chest",
+          "At World's End",
+          "On Stranger Tides",
+          "Dead Men Tell No Tales",
+        ],
+      },
+      {
+        label: "Harry Potter",
+        items: [
+          "The Philosopher's Stone",
+          "The Chamber of Secrets",
+          "The Prisoner of Azkaban",
+          "The Goblet of Fire",
+          "The Order of the Phoenix",
+          "The Half-Blood Prince",
+          "The Deathly Hallows: Part 1",
+          "The Deathly Hallows: Part 2",
+        ],
+      },
+      {
+        label: "Jason Bourne",
+        items: [
+          "The Bourne Identity",
+          "The Bourne Supremacy",
+          "The Bourne Ultimatum",
+          "The Bourne Legacy",
+          "Jason Bourne",
+        ],
+      },
+      {
+        label: "Christopher Nolan",
+        items: [
+          "Following",
+          "Memento",
+          "Insomnia",
+          "Batman Begins",
+          "The Prestige",
+          "The Dark Knight",
+          "Inception",
+          "The Dark Knight Rises",
+          "Interstellar",
+          "Dunkirk",
+          "Tenet",
+          "Oppenheimer",
+        ],
+      },
+      {
+        label: "Marvel",
+        items: [
+          "Iron Man",
+          "The Incredible Hulk",
+          "Iron Man 2",
+          "Thor",
+          "Captain America: The First Avenger",
+          "The Avengers",
+          "Iron Man 3",
+          "Thor: The Dark World",
+          "Captain America: The Winter Soldier",
+          "Guardians of the Galaxy",
+          "Avengers: Age of Ultron",
+          "Ant-Man",
+          "Captain America: Civil War",
+          "Doctor Strange",
+          "Guardians of the Galaxy Vol. 2",
+          "Spider-Man: Homecoming",
+          "Thor: Ragnarok",
+          "Black Panther",
+          "Avengers: Infinity War",
+          "Ant-Man and the Wasp",
+          "Captain Marvel",
+          "Avengers: Endgame",
+          "Spider-Man: Far From Home",
+          "Black Widow",
+          "Shang-Chi and the Legend of the Ten Rings",
+          "Eternals",
+          "Spider-Man: No Way Home",
+          "Doctor Strange in the Multiverse of Madness",
+          "Thor: Love and Thunder",
+          "Black Panther: Wakanda Forever",
+          "Ant-Man and the Wasp: Quantumania",
+          "Guardians of the Galaxy Vol. 3",
+          "The Marvels",
+          "Deadpool & Wolverine",
+          "Captain America: Brave New World",
+          "Thunderbolts",
+          "The Fantastic Four: First Steps",
+        ],
+      },
+    ],
   },
   {
     key: "anime",
