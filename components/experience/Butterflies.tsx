@@ -151,6 +151,46 @@ function makeSprite(color: string, wingScale: number, px: number) {
   return c;
 }
 
+/**
+ * The sprite table: one small canvas per colour per wing position.
+ *
+ * Cached at module scope and warmed long before it is wanted. Six colours and
+ * seven poses is forty-two canvases to allocate and draw, and it used to happen
+ * inside the effect that mounts this component — which mounts on the frame the
+ * sphere hits the floor. Forty-two allocations, several hundred path fills and a
+ * gradient each, all synchronous, on the one frame of the piece that everything
+ * else is also happening on.
+ *
+ * Nothing about it needs to wait for the impact. It only depends on the pixel
+ * ratio, so it is built during the fall instead, while there is nothing else to
+ * do, and by the time the glass breaks it is already sitting here.
+ */
+const TABLES = new Map<number, HTMLCanvasElement[][]>();
+
+/**
+ * The one clamp. Both the canvas and the sprite table have to agree on it, or
+ * the table is warmed under one key and asked for under another, and all the
+ * warming buys is a second copy built at the worst possible moment.
+ */
+export function swarmDpr() {
+  return Math.min(window.devicePixelRatio || 1, 1.5);
+}
+
+export function spriteTable(dpr = swarmDpr()) {
+  const key = Math.round(dpr * 100);
+  const cached = TABLES.get(key);
+  if (cached) return cached;
+  const table = COLORS.map((c) =>
+    Array.from({ length: FLAP_FRAMES }, (_, f) => {
+      const k = f / (FLAP_FRAMES - 1);
+      const eased = 0.5 - 0.5 * Math.cos(k * Math.PI); // ease in/out
+      return makeSprite(c, 1 - eased * 0.58, Math.round(SPRITE_PX * dpr));
+    })
+  );
+  TABLES.set(key, table);
+  return table;
+}
+
 export default function Butterflies({ launch }: { launch: ShardLaunch }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -160,7 +200,7 @@ export default function Butterflies({ launch }: { launch: ShardLaunch }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const dpr = swarmDpr();
     let vw = window.innerWidth;
     let vh = window.innerHeight;
 
@@ -175,14 +215,7 @@ export default function Butterflies({ launch }: { launch: ShardLaunch }) {
     resize();
     window.addEventListener("resize", resize);
 
-    // sprite table: [colour][flap pose], rendered once
-    const sprites = COLORS.map((c) =>
-      Array.from({ length: FLAP_FRAMES }, (_, f) => {
-        const k = f / (FLAP_FRAMES - 1);
-        const eased = 0.5 - 0.5 * Math.cos(k * Math.PI); // ease in/out
-        return makeSprite(c, 1 - eased * 0.58, Math.round(SPRITE_PX * dpr));
-      })
-    );
+    const sprites = spriteTable(dpr);
 
     // One butterfly per shard, at that shard's own moment and heading.
     const specs: Spec[] = launch.shards.map((sh, i) => {

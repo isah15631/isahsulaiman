@@ -120,16 +120,23 @@ const fragmentShader = /* glsl */ `
     float speck = smoothstep(0.86, 1.0, hash(floor(vXY * 40.0)));
     float tone = 0.42 + blotch * 0.5 + grain * 0.22 + speck * 0.5;
 
-    // Broken concrete inside the crater: coarser, darker, freshly exposed.
-    float dug = 1.0 - smoothstep(uR * 0.55, uR * 0.95, d);
-    tone *= mix(1.0, 0.72 + fbm(vXY * 5.5) * 0.7, dug * uDent);
+    // The damage, and only where there is any. Everything below costs two more
+    // noise fields per pixel, and the crater is a couple of units across on a
+    // floor that runs for twenty-six — so outside it, skip the lot. The frame
+    // this shader first draws anything on is the frame of the impact, which is
+    // the single worst moment in the piece to be spending time.
+    if (d < uR * 3.3) {
+      // Broken concrete inside the crater: coarser, darker, freshly exposed.
+      float dug = 1.0 - smoothstep(uR * 0.55, uR * 0.95, d);
+      tone *= mix(1.0, 0.72 + fbm(vXY * 5.5) * 0.7, dug * uDent);
 
-    // And cracks, running out from the hole and dying away. Angular noise
-    // rather than spokes, so they wander and are not evenly spaced.
-    float ang = atan(vXY.y, vXY.x);
-    float crack = pow(abs(sin(ang * 2.7 + fbm(vXY * 0.9) * 5.0)), 26.0);
-    crack *= smoothstep(uR * 0.5, uR * 0.8, d) * (1.0 - smoothstep(uR, uR * 3.2, d));
-    tone *= 1.0 - crack * 0.75 * uDent;
+      // And cracks, running out from the hole and dying away. Angular noise
+      // rather than spokes, so they wander and are not evenly spaced.
+      float ang = atan(vXY.y, vXY.x);
+      float crack = pow(abs(sin(ang * 2.7 + fbm(vXY * 0.9) * 5.0)), 26.0);
+      crack *= smoothstep(uR * 0.5, uR * 0.8, d) * (1.0 - smoothstep(uR, uR * 3.2, d));
+      tone *= 1.0 - crack * 0.75 * uDent;
+    }
 
     // One light, sitting LOW over where the thing landed. A point, not a painted
     // circle: the far wall of the bowl faces it and lights up, the near lip turns

@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Hobby } from "@/lib/content";
-import HobbyObject from "./HobbyObject";
+import HobbyRoll from "./HobbyRoll";
 
 // What the object becomes.
 //
@@ -51,30 +51,92 @@ const PARCHMENT =
 const ROD =
   "linear-gradient(to bottom, #8a7048 0%, #5f4a2e 38%, #3a2c1b 78%, #241b11 100%)";
 
-function Rod({ width }: { width: string }) {
+/**
+ * How wide the rod is, in css pixels, while the scroll is still rolled.
+ *
+ * The rolled scroll draws its own rod inside the svg, and that one is the rod at
+ * rest — it is part of the object on the shelf, not something that materialises
+ * when the thing opens. So the html rod has to come into existence at exactly
+ * that width and grow from there, or the swap reads as a second, longer bar
+ * appearing from nowhere.
+ *
+ * From HobbyRoll's own units: the rod spans +/-34 with a knob of r 3.4 at each
+ * end, at the object scale of 0.82, in a 116-unit viewBox rendered 150px wide.
+ * (34 + 3.4) * 2 * 0.82 * (150 / 116).
+ */
+const ROD_SHORT = 79;
+
+/**
+ * The rod, which scales rather than resizes.
+ *
+ * scaleX and not width, because width is layout: growing it would re-lay out
+ * the dialog and re-centre everything under it on every frame. The knobs are
+ * counter-scaled on the same transition so they stay circular while the bar they
+ * cap stretches, and they still ride the ends because the parent's scale moves
+ * them there for free.
+ */
+function Rod({
+  width,
+  scale,
+  visible,
+  transition,
+  onComplete,
+}: {
+  width: string;
+  scale: number;
+  visible: boolean;
+  transition: typeof UNROLL | typeof GROW;
+  onComplete?: () => void;
+}) {
+  const knob = { scaleX: 1 / scale };
   return (
-    <div
+    <motion.div
       className="relative z-10 flex shrink-0 items-center justify-center"
       style={{ width }}
+      initial={{ scaleX: scale, opacity: 0 }}
+      animate={{ scaleX: scale, opacity: visible ? 1 : 0 }}
+      transition={{ ...transition, opacity: { duration: 0 } }}
+      onAnimationComplete={onComplete}
     >
       <div
         className="h-[9px] w-full rounded-full"
         style={{ background: ROD, boxShadow: "0 2px 10px rgba(0,0,0,0.55)" }}
       />
-      {/* the knobs on the ends, which is most of what says "rod" and not "bar" */}
-      <span
-        className="absolute left-0 h-[15px] w-[15px] -translate-x-1/2 rounded-full"
-        style={{ background: ROD }}
+      {/* the knobs on the ends, which is most of what says "rod" and not "bar".
+          The half-width shift has to be re-stated here: framer writes the whole
+          transform, so a tailwind -translate-x-1/2 on the same element is gone
+          the moment this animates. */}
+      <motion.span
+        className="absolute left-0 h-[15px] w-[15px] rounded-full"
+        style={{ background: ROD, x: "-50%" }}
+        initial={knob}
+        animate={knob}
+        transition={transition}
       />
-      <span
-        className="absolute right-0 h-[15px] w-[15px] translate-x-1/2 rounded-full"
-        style={{ background: ROD }}
+      <motion.span
+        className="absolute right-0 h-[15px] w-[15px] rounded-full"
+        style={{ background: ROD, x: "50%" }}
+        initial={knob}
+        animate={knob}
+        transition={transition}
       />
-    </div>
+    </motion.div>
   );
 }
 
 const UNROLL = { duration: 0.72, ease: [0.32, 0.72, 0.24, 1] as const };
+/** The rod drawing itself out to the width of the page it is about to hold. */
+const GROW = { duration: 0.34, ease: [0.32, 0.72, 0.24, 1] as const };
+/** Up to the top of the screen, and later back down again. */
+const FLIGHT = { duration: 0.46, ease: [0.3, 0.7, 0.25, 1] as const };
+/**
+ * If the flight never reports finishing, unroll anyway.
+ *
+ * A layout animation only runs when something actually moved, and there are ways
+ * to open one of these where nothing has to — so without this, the scroll would
+ * sit there rolled up forever waiting for a callback that was never coming.
+ */
+const FLIGHT_FALLBACK = 700;
 /** The writing is only legible once there is paper under it. */
 const INK = { duration: 0.5, delay: 0.34, ease: "easeOut" as const };
 
@@ -89,38 +151,88 @@ export default function HobbyScroll({
   phase: number;
   onClose: () => void;
 }) {
-  // How tall the paper is, which is now a fixed number rather than something
-  // being animated. Measured before paint, and again on a resize, because the
-  // page inside it is capped in viewport units and a phone turning on its side
-  // changes what that means.
+  // The thirds of it, in order.
+  //
+  // Clicking one used to fly it up and unroll it at the same time, which is two
+  // things happening at once and reads as neither. Then it was a sequence of
+  // two, and the rod cheated: it was already lying up there at its full length
+  // before the scroll arrived, so what you watched was a bar appearing and the
+  // scroll flying up to hang itself on it. The rod is part of the scroll. It is
+  // short while the scroll is rolled, because that is how long a rod inside a
+  // rolled scroll is.
+  //
+  // So: fly, still rolled and still short. Land, and the rod draws out to the
+  // width of the page. Only then does the paper come down out of it. Closing
+  // runs all three backwards — the paper rolls up, the rod pulls back in, and
+  // only then does it leave, with its roll back in its hands.
+  type Stage = "flying" | "growing" | "open" | "rolling" | "shrinking";
+  const [stage, setStage] = useState<Stage>("flying");
+  const open = stage === "open";
+  /** rolled up, in the air: at both ends of the sequence */
+  const rolled = stage === "flying" || stage === "shrinking";
+
+  const land = () => setStage((s) => (s === "flying" ? "growing" : s));
+  useEffect(() => {
+    const t = window.setTimeout(land, FLIGHT_FALLBACK);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  // How tall the paper is, and how wide the rod has to end up, both fixed
+  // numbers rather than things being animated. Measured before paint, and again
+  // on a resize, because the page inside it is capped in viewport units and a
+  // phone turning on its side changes what that means.
   const paper = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
+  const [short, setShort] = useState(0.15);
   useLayoutEffect(() => {
-    const read = () => setHeight(paper.current?.offsetHeight ?? 0);
+    const read = () => {
+      const el = paper.current;
+      setHeight(el?.offsetHeight ?? 0);
+      // The rod overhangs the paper by 13px at each end, so the length it grows
+      // to is the paper plus that. Ratio, because it grows by scaling.
+      const full = (el?.offsetWidth ?? 0) + 26;
+      setShort(full ? Math.min(1, ROD_SHORT / full) : 0.15);
+    };
     read();
     window.addEventListener("resize", read);
     return () => window.removeEventListener("resize", read);
   }, [hobby.key]);
 
+  const rodScale = rolled ? short : 1;
+  const rodProps = {
+    width: "calc(100% + 26px)",
+    scale: rodScale,
+    // Not while it is rolled: the rolled scroll draws its own rod inside the
+    // svg, and a second one hanging under it is the very thing this sequence is
+    // fixing. The handover is a cut and not a fade — the two are the same length
+    // in the same place at that instant, so they are one rod, and crossfading a
+    // thing with itself only makes it briefly transparent.
+    visible: !rolled,
+    transition: stage === "growing" || stage === "shrinking" ? GROW : UNROLL,
+  };
+
   // Escape closes it. The backdrop is clickable for the same purpose, but a
   // scroll that fills most of a phone leaves little backdrop to hit.
+  const close = () => setStage((s) => (s === "open" ? "rolling" : s));
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   return (
     // Above the sections pane, which is z-50. This is portalled onto the body
     // rather than left inside that pane, so it no longer inherits its stacking
     // and has to out-rank it on its own.
-    <div className="fixed inset-0 z-[60] flex items-center justify-center px-5">
+    // Top of the screen, not the middle of it. It is flown up here and then
+    // opened downward, so it needs the room below it to open INTO.
+    <div className="fixed inset-0 z-[60] flex items-start justify-center px-5 pt-[6vh]">
       <motion.button
         type="button"
         aria-label="Close"
-        onClick={onClose}
+        onClick={close}
         // No backdrop blur. It was three pixels of blur over the entire viewport,
         // which is a full-screen filter pass on every frame of the unroll for an
         // effect you cannot see behind a scrim this dark. The scrim does the
@@ -138,20 +250,45 @@ export default function HobbyScroll({
         aria-label={hobby.title}
         className="relative flex w-full max-w-[34rem] flex-col items-center"
       >
-        {/* The object itself, arriving from its place in the grid. Parked, so
-            it stops bobbing once it has landed on the scroll. */}
+        {/* The wings, arriving from the shelf with the scroll they were
+            carrying. Parked, so they stop bobbing once they have landed.
+
+            Only the wings. What they were holding is the paper below them now:
+            it unrolled, so there is nothing left to be rolled up, and a small
+            rolled scroll sitting on top of an open one is two of the same thing.
+            They grip the top rod instead, which is what is actually holding this
+            up. */}
         <motion.div
           layoutId={`hobby-${hobby.key}`}
-          className="relative z-20 -mb-1"
-          transition={{ duration: 0.5, ease: [0.32, 0.72, 0.24, 1] }}
+          className="relative z-20 -mb-2"
+          transition={FLIGHT}
+          onLayoutAnimationComplete={land}
         >
-          {/* Bigger than it looks in the grid, and wider than it is tall now
-              that it has a wingspan: at the size the old square box wanted,
-              this landed as a smudge on top of the rod. */}
-          <HobbyObject hobby={hobby.key} color={color} size={132} phase={phase} still />
+          {/* Rolled while it is in the air, and only the wings once it is open:
+              what it was carrying is the paper below them now, and a small rolled
+              scroll sitting on top of an open one is two of the same thing. On
+              the way out it takes the roll back, because it has to have something
+              to fly home with. */}
+          <HobbyRoll
+            color={color}
+            size={150}
+            phase={phase}
+            still
+            wingsOnly={!rolled}
+          />
         </motion.div>
 
-        <Rod width="calc(100% + 26px)" />
+        {/* Keyed on the measured ratio so the first painted frame is already at
+            the short length: framer reads `initial` once, at mount, and at mount
+            nothing has been measured yet. */}
+        <Rod
+          key={short}
+          {...rodProps}
+          onComplete={() => {
+            if (stage === "growing") setStage("open");
+            if (stage === "shrinking") onClose();
+          }}
+        />
 
         <motion.div
           ref={paper}
@@ -159,9 +296,17 @@ export default function HobbyScroll({
           // Revealed top down. `inset(0 0 100% 0)` hides all of it and 0% shows
           // all of it, and in between the paper appears out from under the rod.
           initial={{ clipPath: "inset(0 0 100% 0)", opacity: 0 }}
-          animate={{ clipPath: "inset(0 0 0% 0)", opacity: 1 }}
-          exit={{ clipPath: "inset(0 0 100% 0)", opacity: 0 }}
+          animate={
+            open
+              ? { clipPath: "inset(0 0 0% 0)", opacity: 1 }
+              : { clipPath: "inset(0 0 100% 0)", opacity: 0 }
+          }
           transition={UNROLL}
+          // Rolled all the way up. Now the rod can pull back in, and only after
+          // that does it leave.
+          onAnimationComplete={() => {
+            if (stage === "rolling") setStage("shrinking");
+          }}
         >
           <div
             className="relative"
@@ -184,9 +329,8 @@ export default function HobbyScroll({
             <motion.div
               className="no-scrollbar relative max-h-[56vh] overflow-y-auto px-7 py-9 sm:px-10"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.15 } }}
-              transition={INK}
+              animate={{ opacity: open ? 1 : 0 }}
+              transition={open ? INK : { duration: 0.16 }}
             >
               <h3 className="font-serif text-3xl font-light tracking-wide text-[#2a2017]">
                 {hobby.title}
@@ -227,19 +371,17 @@ export default function HobbyScroll({
           key={height}
           className="flex w-full flex-col items-center"
           initial={{ y: -height }}
-          animate={{ y: 0 }}
-          exit={{ y: -height }}
+          animate={{ y: open ? 0 : -height }}
           transition={UNROLL}
         >
-          <Rod width="calc(100% + 26px)" />
+          <Rod {...rodProps} />
 
           <motion.button
             type="button"
-            onClick={onClose}
+            onClick={close}
             className="mt-6 font-sans text-xs tracking-[0.2em] text-neutral-500 transition-colors hover:text-ember"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            animate={{ opacity: open ? 1 : 0 }}
             transition={INK}
           >
             roll it up

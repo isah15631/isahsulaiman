@@ -105,6 +105,17 @@ const fragmentShader = /* glsl */ `
   // Where in the noise field this sphere is cut from, so the grain is not
   // identical on every visit.
   uniform vec3 uSeed;
+  /**
+   * Which way the sun is, in the moon's OWN space.
+   *
+   * Object space rather than view space, because the crater relief is computed
+   * in object space and there is no way to get it out of there from in here:
+   * normalMatrix is a vertex shader built-in and does not exist in a fragment
+   * shader. Rather than smuggle a matrix across, the light comes the other way —
+   * turned into the moon's frame on the cpu, once a frame, which is a quaternion
+   * multiply against a rotation we already have.
+   */
+  uniform vec3 uLightObj;
   varying vec3 vPos;
   varying vec3 vNormal;
   varying float vChunk;
@@ -155,12 +166,64 @@ const fragmentShader = /* glsl */ `
     return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
   }
 
-  // Ridged noise: fold the field at zero and sharpen it, and what is left is
-  // rims. Two scales, the second finer and shallower.
-  float relief(vec3 p){
-    float a = 1.0 - abs(snoise(p * 3.6));
-    float b = 1.0 - abs(snoise(p * 8.4));
-    return pow(a, 5.0) * 0.64 + pow(b, 4.0) * 0.36;
+  vec3 hash3(vec3 p){
+    p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
+             dot(p, vec3(269.5, 183.3, 246.1)),
+             dot(p, vec3(113.5, 271.9, 124.6)));
+    return fract(sin(p) * 43758.5453);
+  }
+
+  // Craters, as cells rather than as noise.
+  //
+  // This was ridged noise before — the field folded at zero and sharpened, which
+  // gives you rims, and rims are not craters. Ridges are a connected network:
+  // they wander, they branch, they run into each other, and the result reads as
+  // cracked mud or crumpled foil. What actually makes a crater is that it is
+  // ROUND and it is ISOLATED, and the only cheap thing that gives you round and
+  // isolated is a cell.
+  //
+  // So: nearest feature point, and everything is measured from that. The distance
+  // to it is where you are in the crater, the direction to it is which way the
+  // ground is tilted, and the cell's own random number sets how wide and how deep
+  // that particular one is — so they vary and some cells barely dent at all.
+  void craterAt(vec3 p, out float dist, out vec3 dir, out float rand){
+    vec3 ip = floor(p);
+    vec3 fp = fract(p);
+    float best = 9.0;
+    vec3 bestR = vec3(0.0, 0.0, 1.0);
+    float bestH = 0.0;
+    for (int x = -1; x <= 1; x++){
+      for (int y = -1; y <= 1; y++){
+        for (int z = -1; z <= 1; z++){
+          vec3 g = vec3(float(x), float(y), float(z));
+          vec3 h = hash3(ip + g);
+          vec3 r = g + h - fp;
+          float d2 = dot(r, r);
+          if (d2 < best){ best = d2; bestR = r; bestH = h.x; }
+        }
+      }
+    }
+    dist = sqrt(best);
+    // r points from here to the middle of the crater, so out of it is the other
+    // way. This is the direction the ground falls away in.
+    dir = -bestR / max(0.0001, dist);
+    rand = bestH;
+  }
+
+  /**
+   * The shape of one, and its slope, in one pass.
+   *
+   * A bowl and the lip of rock thrown out around it, both as gaussians, because a
+   * gaussian differentiates to something you can write down — and the slope is
+   * the entire point. Height alone would only darken the floors; it is the slope
+   * that decides which wall of a crater faces the sun.
+   */
+  void craterShape(float u, float depth, out float h, out float slope){
+    float bowl = exp(-2.6 * u * u);
+    float lipU = (u - 1.0) / 0.30;
+    float lip = exp(-lipU * lipU);
+    h = -depth * bowl + depth * 0.42 * lip;
+    slope = depth * 5.2 * u * bowl - depth * 0.42 * 2.0 * lipU / 0.30 * lip;
   }
 
   void main(){
@@ -199,34 +262,56 @@ const fragmentShader = /* glsl */ `
     // drawn in buffer order against a depth buffer, WHICH bits of the far side
     // survive depends on the order they happened to be drawn in.
     if(uShatter < 0.0001){
-      vec3 L = normalize(vec3(0.86, 0.26, 0.44));
+      vec3 L = normalize(uLightObj);
 
       // Broad dark plains, the flat old floods. Low frequency and soft edged,
       // because their edges are where lava stopped, not where anything broke.
       float mare = smoothstep(0.44, 0.74, snoise(sp * 0.82) * 0.5 + 0.5);
 
-      // Craters, as ridged noise: turning the noise inside out at zero gives
-      // rings, and rings are what a cratered surface is. Two scales of them, big
-      // basins and the pitting between.
-      float h = relief(sp);
-      // Sampled a second time a short way toward the sun. Where the surface
-      // rises toward the light the rim catches it and the floor behind it does
-      // not, which is the whole reason a crater reads as a hole and not a ring
-      // painted on a ball. It is a real relief term, from a real gradient.
-      float hL = relief(sp + L * 0.075);
-      float slope = (hL - h) * 7.0;
+      // The nearest crater, and which way its ground tilts.
+      float cd;
+      vec3 cdir;
+      float crand;
+      craterAt(sp * 3.1, cd, cdir, crand);
 
-      float dust = snoise(sp * 36.0) * 0.5 + 0.5;
+      // Every one is a different size and depth, and some barely happened. That
+      // spread is what stops a cellular field reading as a honeycomb.
+      float radius = 0.26 + crand * 0.30;
+      float depth = 0.35 + fract(crand * 7.31) * 0.75;
+      float u = cd / radius;
+      float h;
+      float slope;
+      craterShape(u, depth, h, slope);
+      // Beyond the rim there is nothing: flat ground until the next one.
+      float reach = 1.0 - smoothstep(1.25, 1.65, u);
+      h *= reach;
+      slope *= reach;
 
-      vec3 rock = mix(vec3(0.56, 0.545, 0.515), vec3(0.285, 0.285, 0.30), mare);
-      rock *= 0.88 + 0.24 * dust;
-      rock *= 0.82 + 0.34 * h;
+      // This is a sphere, so its object-space normal is just where you are on it.
+      // The crater tilts that normal along the direction the ground falls away
+      // in, which is what makes one wall of a hole face the sun and the other
+      // face away — the single thing that separates a crater from a grey ring
+      // painted on a ball.
+      vec3 nObj = normalize(vPos);
+      vec3 fallAway = cdir - nObj * dot(cdir, nObj);
+      vec3 tilted = normalize(nObj - fallAway * slope * 0.55 / max(0.35, radius));
 
-      float lam = max(0.0, dot(nrm, L));
+      // and the pitting between them, which is albedo only: too small to catch
+      // light, big enough to stop the ground being smooth.
+      float dust = snoise(sp * 34.0) * 0.5 + 0.5;
+      float grit = snoise(sp * 11.0) * 0.5 + 0.5;
+
+      vec3 rock = mix(vec3(0.58, 0.565, 0.535), vec3(0.30, 0.30, 0.315), mare);
+      rock *= 0.90 + 0.20 * dust;
+      rock *= 0.94 + 0.12 * grit;
+      // Fresh material thrown out of a crater is brighter than what it landed on,
+      // and the floor of one is in its own shadow.
+      rock *= 1.0 + 0.30 * max(0.0, h) - 0.34 * max(0.0, -h);
+
+      float lam = max(0.0, dot(tilted, L));
       // The terminator is hard. There is no air out here to soften it and no
       // second surface to bounce anything back.
-      float lit = clamp(lam + slope * lam * 1.6, 0.0, 1.6);
-      vec3 col = rock * (0.035 + lit);
+      vec3 col = rock * (0.03 + lam * 1.16);
 
       // and it goes dark at the limb, the way a sphere of dust does
       col *= 1.0 - 0.42 * pow(1.0 - abs(nrm.z), 3.0);
@@ -263,6 +348,11 @@ const fragmentShader = /* glsl */ `
  * The break, replayed on the CPU for one piece. Must match the vertex shader
  * exactly, or the butterflies will not appear where the glass actually was.
  */
+/** Where the sun is, in world space, and two scratch objects for moving it. */
+const SUN = new THREE.Vector3(0.86, 0.26, 0.44).normalize();
+const sunTmp = new THREE.Vector3();
+const spinTmp = new THREE.Quaternion();
+
 const dirTmp = new THREE.Vector3();
 const contactTmp = new THREE.Vector3(0, -ORB_RADIUS, 0);
 function shardAt(ch: OrbChunk, s: number, out: THREE.Vector3) {
@@ -303,6 +393,7 @@ export default function Orb({
         side: THREE.DoubleSide,
         uniforms: {
           uShatter: { value: 0 },
+        uLightObj: { value: new THREE.Vector3(0.86, 0.26, 0.44).normalize() },
           uSeed: {
             value: new THREE.Vector3(
               Math.random() * 40,
@@ -385,6 +476,13 @@ export default function Orb({
       const spin = t * 0.045 + Math.max(0, t - BEAT.release) * 0.085;
       mesh.rotation.x = 0.35 + spin;
       mesh.rotation.z = 0.12 + spin * 0.4;
+
+      // The sun does not turn with it. The surface is lit in the moon's own
+      // frame, so the light has to be carried into that frame every time the
+      // moon moves, or the terminator rotates with the rock and the whole thing
+      // reads as a lamp bolted to the surface.
+      sunTmp.copy(SUN).applyQuaternion(spinTmp.copy(mesh.quaternion).invert());
+      material.uniforms.uLightObj.value.copy(sunTmp);
 
       if (t >= BEAT.impact) {
         impactRef.current = now;

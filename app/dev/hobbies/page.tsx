@@ -8,7 +8,7 @@
 
 import { HOBBIES } from "@/lib/content";
 import { SWARM } from "@/lib/palette";
-import HobbyObject from "@/components/experience/HobbyObject";
+import HobbyRoll from "@/components/experience/HobbyRoll";
 
 export default function DevHobbies() {
   return (
@@ -19,8 +19,7 @@ export default function DevHobbies() {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
         {HOBBIES.map((h, i) => (
           <div key={h.key} style={{ textAlign: "center" }}>
-            <HobbyObject
-              hobby={h.key}
+            <HobbyRoll
               color={SWARM[i % SWARM.length]}
               size={150}
               phase={i}
@@ -45,9 +44,8 @@ export default function DevHobbies() {
           here: on a phone these land at about this size */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {HOBBIES.map((h, i) => (
-          <HobbyObject
+          <HobbyRoll
             key={h.key}
-            hobby={h.key}
             color={SWARM[i % SWARM.length]}
             size={82}
             phase={i}

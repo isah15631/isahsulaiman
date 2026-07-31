@@ -239,6 +239,10 @@ export const HOBBIES: Hobby[] = [
 
 export const CONTACT = {
   email: "isah15631@gmail.com",
+  // Written the way it is dialled locally; the tel: link carries the country
+  // code, so a phone abroad still gets it right.
+  phone: "08068787469",
+  phoneHref: "tel:+2348068787469",
   // LinkedIn deliberately left out.
   socials: [
     { label: "GitHub", href: "https://github.com/isah15631" },

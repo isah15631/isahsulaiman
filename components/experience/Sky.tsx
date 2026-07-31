@@ -192,11 +192,15 @@ const BURN_FRAG = /* glsl */ `
   varying vec3 vView;
 
   void main(){
-    // The underside is what is hitting the air, so that is what is white. The
-    // limb glows because you are looking through more of the shock there.
+    // The underside is what is hitting the air, so that is what is white.
     float lead = max(0.0, dot(vN, vec3(0.0, -1.0, 0.0)));
     float limb = pow(1.0 - max(0.0, dot(vN, vView)), 2.2);
-    float a = uBurn * (0.85 * pow(lead, 1.5) + 0.35 * limb);
+    // The limb term MULTIPLIES the leading face rather than being added to it.
+    // Added, it lit the whole silhouette equally and drew a golden ring right
+    // the way around the moon — which is a halo, and a halo is the one thing
+    // atmospheric entry does not look like. The air is only being hit on one
+    // side, so only one side is allowed to glow.
+    float a = uBurn * pow(lead, 1.3) * (0.70 + 0.85 * limb);
     if (a < 0.004) discard;
     vec3 col = mix(vec3(1.0, 0.34, 0.08), vec3(1.0, 0.96, 0.88), pow(lead, 3.0));
     gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));

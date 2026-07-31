@@ -3,8 +3,8 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ShardLaunch } from "@/lib/shards";
-import { startAudio, playShatter, playSwell } from "@/lib/audio";
-import Butterflies from "./Butterflies";
+import { startAudio, playSwell } from "@/lib/audio";
+import Butterflies, { spriteTable } from "./Butterflies";
 import Doorway from "./Doorway";
 import LastButterfly from "./LastButterfly";
 import WelcomeSequence from "./WelcomeSequence";
@@ -59,6 +59,14 @@ export default function Experience() {
     return () => timers.current.forEach((t) => window.clearTimeout(t));
   }, []);
 
+  // Draw the swarm's sprites while the moon is still falling. They are wanted on
+  // the frame it lands, and building them there put a stall in the middle of the
+  // impact. A second in, there is nothing else happening and nobody notices.
+  useEffect(() => {
+    const t = window.setTimeout(() => spriteTable(), 1000);
+    return () => window.clearTimeout(t);
+  }, []);
+
   /**
    * Nobody taps any more, and that is a problem for sound: browsers will not
    * let a page make a noise until the visitor has done something, and this
@@ -87,15 +95,18 @@ export default function Experience() {
   const onImpact = useCallback(() => {
     if (phaseRef.current !== "fall") return;
     goPhase("eruption");
-    playShatter();
     setGlow(1);
 
     after(200, () => {
       playSwell();
       setWorld(1); // the darkness becomes a warm, beautiful environment
     });
-    // Nothing else. The break and the swell carry the moment between them; a
-    // third sound on top read as a game pickup.
+    // The breaking glass is gone at Isah's request, so the swell carries the
+    // moment on its own. Which also quietly settles the oldest open question in
+    // the spec: the piece never asks anyone to tap anything, browsers will not
+    // let a page make a noise until they have, and the shatter was the one sound
+    // that landed early enough to be swallowed by that. The swell is two hundred
+    // milliseconds later and has always had a better chance of being heard.
 
     after(CANVAS_OUT, () => setOrbGone(true));
 

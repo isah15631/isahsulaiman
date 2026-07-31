@@ -19,7 +19,7 @@ import { SWARM } from "@/lib/palette";
 import { playClick } from "@/lib/audio";
 import Carrier from "./Carrier";
 import Companion from "./Companion";
-import HobbyObject from "./HobbyObject";
+import HobbyRoll from "./HobbyRoll";
 import HobbyScroll from "./HobbyScroll";
 import LightBulb from "./LightBulb";
 import PortraitAssembly from "./PortraitAssembly";
@@ -604,9 +604,10 @@ const OBJECT_BOX = Math.round((OBJECT_SIZE * 78) / 116);
 /**
  * The shelf.
  *
- * Seven objects hanging in the dark, each wearing the swarm's wings. The name
- * is a caption underneath rather than a label on top, because the object is
- * meant to be the thing you read first.
+ * Scrolls hanging in the dark, each wearing the swarm's wings and each tied with
+ * its own colour. They are all the same drawing, which is the point: a hobby is
+ * now a line of content and a colour rather than a bespoke object somebody has
+ * to draw, so the eighth one costs nothing.
  *
  * While one is open, its instance is deliberately NOT rendered here. Two
  * elements sharing a layoutId at the same time is a conflict, and the shared
@@ -654,10 +655,12 @@ function Hobbies() {
                   <motion.span
                     layoutId={`hobby-${h.key}`}
                     className="block"
-                    transition={{ duration: 0.5, ease: [0.32, 0.72, 0.24, 1] }}
+                    // Back to its place quickly. Going out it is being handed
+                    // something and there is time to watch; coming back the
+                    // reading is already over.
+                    transition={{ duration: 0.34, ease: [0.4, 0, 0.2, 1] }}
                   >
-                    <HobbyObject
-                      hobby={h.key}
+                    <HobbyRoll
                       color={HOBBY_COLORS[i % HOBBY_COLORS.length]}
                       size={OBJECT_SIZE}
                       phase={i}
@@ -665,10 +668,10 @@ function Hobbies() {
                   </motion.span>
                 )}
               </span>
-              {/* No caption. The name is carried only by the button's
-                  accessible label, which a screen reader needs and a visitor
-                  does not get: working out what you are holding is the point
-                  of picking it up. */}
+              {/* No caption. The name is carried only by the button's accessible
+                  label, which a screen reader needs and a visitor does not: it is
+                  written across the top of the scroll the moment it opens, and
+                  opening one is the only way anyone was ever going to read it. */}
             </motion.button>
           </li>
         ))}
@@ -776,6 +779,21 @@ function Contact() {
           {copied ? "copied." : "copy address"}
         </button>
       </div>
+
+      {/* The number, under the address rather than beside it. It is the second
+          way in, not a rival to the first: same serif, a size down, and no
+          butterflies. */}
+      <p className="mt-8 font-serif text-lg font-light tracking-wide sm:text-xl">
+        <a
+          href={CONTACT.phoneHref}
+          className="group inline-block text-neutral-300 transition-colors duration-500 hover:text-ember"
+        >
+          {CONTACT.phone}
+          <span className="relative mt-2 block h-px w-full bg-neutral-800">
+            <span className="absolute inset-0 origin-left scale-x-0 bg-ember transition-transform duration-500 ease-out group-hover:scale-x-100" />
+          </span>
+        </a>
+      </p>
 
       <div className="mt-16 flex flex-wrap gap-x-8 gap-y-3 font-sans text-sm">
         {CONTACT.socials.map((s) => (
