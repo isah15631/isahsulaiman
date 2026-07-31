@@ -398,7 +398,12 @@ function About() {
             arrives, and its lower edge dissolves into the page instead of
             stopping at a hard rectangle, which on a phone was the flattest
             thing on the site. */}
-        <div className="relative mx-auto w-[min(78%,17rem)] shrink-0 md:mx-0 md:w-44">
+        {/* Smaller on a phone than it was. At 78% of the column and a 3:4 crop
+            it stood 360px tall, which is most of a screen spent on a headshot
+            before a word has been read — and a portrait that fills the view
+            reads as a profile page rather than as a picture on a wall. Hung at
+            a size you take in at a glance instead. */}
+        <div className="relative mx-auto w-[min(58%,12.5rem)] shrink-0 md:mx-0 md:w-44">
           {/* warm light pooling behind him, echoing the bulb */}
           <div
             className="pointer-events-none absolute -inset-x-8 -inset-y-6 -z-10 blur-2xl"
