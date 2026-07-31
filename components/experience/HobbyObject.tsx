@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type { Hobby } from "@/lib/content";
 
 // A hobby, before you have read it: the thing itself, winged, hanging in the
@@ -740,29 +739,38 @@ export default function HobbyObject({
   const drift = 3.6 + (phase % 3) * 0.7;
 
   return (
-    <motion.div
-      className="relative"
-      style={{ width: size, height: Math.round(size * VIEW_ASPECT) }}
-      animate={still ? { y: 0 } : { y: [0, -9, 0] }}
-      transition={
-        still
-          ? { duration: 0.4, ease: "easeOut" }
-          : {
-              duration: drift,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: -phase * 0.9,
-            }
-      }
+    // The bob is a css animation rather than a javascript one. Seven of these
+    // sit on the shelf at once, and as framer animations that was seven loops
+    // writing an inline transform on every frame, forever, on the main thread —
+    // while the page they are on is being scrolled and while the pane they are
+    // in is being flown down the screen. On the compositor it is seven
+    // transforms and no javascript at all.
+    //
+    // No paint containment here, tempting as it is. It would stop a wingbeat
+    // dirtying anything outside its own box, and it also clips every drop of
+    // paint to that box — which cut the colour wash off square and put a hard
+    // rectangle behind every object on the shelf.
+    <div
+      className={still ? "relative" : "relative hobby-bob"}
+      style={{
+        width: size,
+        height: Math.round(size * VIEW_ASPECT),
+        ["--bob" as string]: `${drift}s`,
+        ["--bob-offset" as string]: `${-phase * 0.9}s`,
+      }}
     >
-      {/* The colour lives here, in a blurred wash behind the object, rather
-          than in a drop-shadow on it. Same reason the swarm has no filter on
-          it: a blur pass over live geometry is re-rasterised every frame, and
-          this one is painted once and left alone. */}
+      {/* The colour lives here, in a wash behind the object, rather than in a
+          drop-shadow on it. Same reason the swarm has no filter on it.
+
+          It is a soft gradient and NOT a blurred one. It used to carry blur-2xl,
+          which is a forty pixel blur pass, seven of them on a shelf, on elements
+          that are moving — and a gradient with a wide feathered stop already
+          looks exactly like a blurred gradient, because that is what a blurred
+          gradient is. */}
       <div
-        className="pointer-events-none absolute inset-0 -z-10 blur-2xl"
+        className="pointer-events-none absolute -inset-6 -z-10"
         style={{
-          background: `radial-gradient(ellipse at 50% 55%, ${color}44, transparent 70%)`,
+          background: `radial-gradient(ellipse at 50% 55%, ${color}3a, ${color}16 38%, transparent 72%)`,
         }}
       />
       <svg
@@ -811,6 +819,6 @@ export default function HobbyObject({
           <Body hobby={hobby} k={hobby} />
         </g>
       </svg>
-    </motion.div>
+    </div>
   );
 }

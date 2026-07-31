@@ -20,7 +20,6 @@ import { playClick } from "@/lib/audio";
 import Carrier from "./Carrier";
 import Companion from "./Companion";
 import HobbyObject from "./HobbyObject";
-import NightSky from "./NightSky";
 import HobbyScroll from "./HobbyScroll";
 import LightBulb from "./LightBulb";
 import PortraitAssembly from "./PortraitAssembly";
@@ -217,10 +216,6 @@ export default function Sections() {
     // is falling past the other they would otherwise share a scrollbar and
     // fight over its height.
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#070504] text-neutral-200">
-      {/* And when the lamp is off, what is behind the room is the sky it fell out
-          of. It is the argument the whole piece rests on: you never left. */}
-      <NightSky lit={lightOn} />
-
       {/* warm vignette so sections feel like the world the butterflies made */}
       <motion.div
         className="pointer-events-none fixed inset-0"

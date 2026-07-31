@@ -108,7 +108,22 @@ body {
   to { transform: scaleX(0.87) rotate(-8deg); }
 }
 
+/* The shelf's objects hang in the air. Seven of these used to be seven
+   javascript loops writing a transform every frame; as one keyframe each they
+   run on the compositor and cost nothing while the page scrolls under them. */
+.hobby-bob {
+  animation: hobby-bob var(--bob, 4s) ease-in-out infinite;
+  animation-delay: var(--bob-offset, 0s);
+  will-change: transform;
+}
+
+@keyframes hobby-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .butterfly__wing { animation: none; transform: scaleX(0.75); }
   .wingbeat { animation: none; transform: scaleX(0.94); }
+  .hobby-bob { animation: none; }
 }
