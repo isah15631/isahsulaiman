@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SWARM } from "@/lib/palette";
 
 // The portrait does not load, it arrives.
 //
@@ -33,7 +32,39 @@ import { SWARM } from "@/lib/palette";
 // transformed blits per frame is cheap, a few hundred animated DOM nodes is
 // not. Reduced motion and a failed image both fall back to the plain photo.
 
-const COLORS = SWARM;
+/**
+ * Starlight, which is very nearly white and never the palette.
+ *
+ * These took the swarm's six colours, which was the one thing carried over from
+ * the butterflies that should not have been. A crimson butterfly is a
+ * butterfly; a crimson star is a bug. Real stars vary in COLOUR TEMPERATURE and
+ * almost not at all in hue — hot ones run blue-white, cool ones run amber, and
+ * the whole range from end to end is narrower than the gap between any two
+ * entries in SWARM. So: white, two shades of blue-white, two of warm white, and
+ * one properly amber for the odd old one. Weighted toward the cold end, because
+ * the sky is.
+ *
+ * They also need somewhere dark to be. A star is not a bright colour, it is a
+ * bright thing against black, and these were glowing onto whatever the page
+ * happened to be — which is why the night goes on the canvas underneath them
+ * (see SKY) and lifts as the photograph takes over.
+ */
+const COLORS = [
+  "#ffffff",
+  "#cfe0ff",
+  "#e8f0ff",
+  "#fff2dc",
+  "#dbe6ff",
+  "#ffdda6",
+];
+
+/** The dark they are seen against, top to bottom. */
+const SKY: [number, string][] = [
+  [0, "#080b16"],
+  [0.55, "#05070f"],
+  [1, "#020307"],
+];
+
 /**
  * Roomier than the butterfly's box was, and most of it is deliberately empty.
  *
@@ -288,6 +319,9 @@ export default function PortraitAssembly({
         })
       );
 
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      for (const [at, c] of SKY) sky.addColorStop(at, c);
+
       const drawSettled = () => {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, w, h);
@@ -326,6 +360,22 @@ export default function PortraitAssembly({
 
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, w, h);
+
+        // The night, under everything.
+        //
+        // Without it the stars were glowing onto whatever the page was behind
+        // the canvas, and a star with the room showing through it is a smear of
+        // pale colour. It holds at full strength for most of the assembly and
+        // only lifts at the end, so the sky does not start draining away while
+        // there are still stars flying through it — and by the time it is gone
+        // the photograph has covered it anyway.
+        const night = 1 - clamp01((clock / TOTAL - 0.58) / 0.42);
+        if (night > 0) {
+          ctx.globalAlpha = night;
+          ctx.fillStyle = sky;
+          ctx.fillRect(0, 0, w, h);
+          ctx.globalAlpha = 1;
+        }
 
         for (const p of pieces) {
           const t = clamp01((clock - p.delay) / FLIGHT);
