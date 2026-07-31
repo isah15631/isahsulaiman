@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Hobby } from "@/lib/content";
 import HobbyObject from "./HobbyObject";
 
@@ -27,8 +27,21 @@ import HobbyObject from "./HobbyObject";
 // It is a clip now. The paper is laid out once at its full size and revealed from
 // the top down with an inset clip-path, which is a paint, not a layout: nothing
 // reflows, nothing re-centres, the blur and the shadow are rasterised once. The
-// writing still never stretches, because nothing is ever scaled. It also removes
-// a drift nobody asked for, since the group used to slide upward as it grew.
+// writing still never stretches, because nothing is ever scaled.
+//
+// Which broke the lower rod, and that is worth writing down. The two rods start
+// together and are pushed apart by the paper appearing between them, and the way
+// that used to work was pure luck: the lower rod sat AFTER the paper in normal
+// flow, so animating the paper's height dragged it along for free. Freeze the
+// layout and it stops moving — the paper clipped away to nothing and left both
+// rods sitting where they were, so it read as the scroll vanishing and the bars
+// hanging around afterwards. Worst on a phone, where the paper is tallest.
+//
+// So the rod rides the edge deliberately now instead of by accident. It and the
+// button under it are translated up by exactly the paper's height and slide back
+// down as the reveal runs, on the same duration and the same curve as the clip,
+// which puts the rod precisely on the edge of the paper at every frame of it.
+// Transform only, so it is still nothing to draw.
 
 /** Aged paper. Warm, because the only light in this room is a tungsten bulb. */
 const PARCHMENT =
@@ -76,6 +89,19 @@ export default function HobbyScroll({
   phase: number;
   onClose: () => void;
 }) {
+  // How tall the paper is, which is now a fixed number rather than something
+  // being animated. Measured before paint, and again on a resize, because the
+  // page inside it is capped in viewport units and a phone turning on its side
+  // changes what that means.
+  const paper = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(0);
+  useLayoutEffect(() => {
+    const read = () => setHeight(paper.current?.offsetHeight ?? 0);
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, [hobby.key]);
+
   // Escape closes it. The backdrop is clickable for the same purpose, but a
   // scroll that fills most of a phone leaves little backdrop to hit.
   useEffect(() => {
@@ -128,6 +154,7 @@ export default function HobbyScroll({
         <Rod width="calc(100% + 26px)" />
 
         <motion.div
+          ref={paper}
           className="w-full overflow-hidden"
           // Revealed top down. `inset(0 0 100% 0)` hides all of it and 0% shows
           // all of it, and in between the paper appears out from under the rod.
@@ -192,19 +219,32 @@ export default function HobbyScroll({
           </div>
         </motion.div>
 
-        <Rod width="calc(100% + 26px)" />
-
-        <motion.button
-          type="button"
-          onClick={onClose}
-          className="mt-6 font-sans text-xs tracking-[0.2em] text-neutral-500 transition-colors hover:text-ember"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.15 } }}
-          transition={INK}
+        {/* The lower rod and everything under it, riding the edge of the paper.
+            Keyed on the measured height so that the first painted frame already
+            has the right offset: framer reads `initial` once, at mount, and at
+            mount there is nothing measured yet. */}
+        <motion.div
+          key={height}
+          className="flex w-full flex-col items-center"
+          initial={{ y: -height }}
+          animate={{ y: 0 }}
+          exit={{ y: -height }}
+          transition={UNROLL}
         >
-          roll it up
-        </motion.button>
+          <Rod width="calc(100% + 26px)" />
+
+          <motion.button
+            type="button"
+            onClick={onClose}
+            className="mt-6 font-sans text-xs tracking-[0.2em] text-neutral-500 transition-colors hover:text-ember"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            transition={INK}
+          >
+            roll it up
+          </motion.button>
+        </motion.div>
       </div>
     </div>
   );
