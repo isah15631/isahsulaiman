@@ -3,13 +3,12 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
-import { ORB_RADIUS } from "@/lib/orbGeometry";
 import {
-  BEAT,
   CLOUD_BASE,
   CLOUD_TOP,
   airDensity,
   burn,
+  dayLight,
   orbY,
   throughCloud,
 } from "@/lib/descent";
@@ -82,6 +81,7 @@ const CLOUD_FRAG = /* glsl */ `
   uniform float uRadius;
   uniform vec3 uOrb;
   uniform float uGlow;
+  uniform float uDay;
   uniform vec3 uBase;
   varying vec3 vWorld;
   varying vec2 vLocal;
@@ -96,14 +96,17 @@ const CLOUD_FRAG = /* glsl */ `
     float body = smoothstep(0.38, 0.82, n) * rim;
     if (body <= 0.004) discard;
 
-    // Lit by the thing falling through it and by nothing else. Inverse square,
-    // because that is what light does, and it is why the deck lights up as it
-    // arrives and goes out again behind it.
-    float d = distance(vWorld, uOrb);
-    float lit = uGlow * 26.0 / (d * d + 6.0);
-
-    vec3 col = uBase + vec3(1.0, 0.58, 0.28) * lit;
-    gl_FragColor = vec4(col, clamp(body * uAlpha, 0.0, 1.0));
+    // No fire on the way in any more: the moon comes down cold, so the deck is
+    // not lit warm from below. As the day comes up it is filled toward a bright,
+    // sunlit grey-white, because a cloud in daylight is the brightest thing in
+    // the sky, not a dark ceiling to pass.
+    vec3 col = uBase;
+    col = mix(col, vec3(0.92, 0.94, 0.98), uDay * 0.85);
+    // Sunlit cloud also holds together instead of thinning to wisps, so it reads
+    // as overcast the moment before we drop out the bottom of it into the open.
+    float alpha = clamp(body * uAlpha, 0.0, 1.0);
+    alpha = max(alpha, body * uDay * 0.6);
+    gl_FragColor = vec4(col, alpha);
   }
 `;
 
@@ -132,11 +135,13 @@ function Deck({ nowRef }: { nowRef: MutableRefObject<number> }) {
     const orb = orbY(now);
     const b = burn(now);
     const density = airDensity(now);
+    const day = dayLight(now);
     for (const m of mats.current) {
       if (!m) continue;
       m.uniforms.uTime.value = state.clock.getElapsedTime();
       m.uniforms.uOrb.value.set(0, orb, 0);
       m.uniforms.uGlow.value = b;
+      m.uniforms.uDay.value = day;
       // thin at the top of the deck, thick in the middle of it
       m.uniforms.uAlpha.value = 0.34 * Math.min(1, density * 1.4);
     }
@@ -164,79 +169,13 @@ function Deck({ nowRef }: { nowRef: MutableRefObject<number> }) {
               uRadius: { value: DECK_R },
               uOrb: { value: new THREE.Vector3() },
               uGlow: { value: 0 },
+              uDay: { value: 0 },
               uBase: { value: new THREE.Color(0.055, 0.065, 0.095) },
             }}
           />
         </mesh>
       ))}
     </group>
-  );
-}
-
-// ------------------------------------------------------------------ the burn
-
-const BURN_VERT = /* glsl */ `
-  varying vec3 vN;
-  varying vec3 vView;
-  void main(){
-    vN = normalize(normalMatrix * normal);
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    vView = normalize(-mv.xyz);
-    gl_Position = projectionMatrix * mv;
-  }
-`;
-
-const BURN_FRAG = /* glsl */ `
-  uniform float uBurn;
-  varying vec3 vN;
-  varying vec3 vView;
-
-  void main(){
-    // The underside is what is hitting the air, so that is what is white.
-    float lead = max(0.0, dot(vN, vec3(0.0, -1.0, 0.0)));
-    float limb = pow(1.0 - max(0.0, dot(vN, vView)), 2.2);
-    // The limb term MULTIPLIES the leading face rather than being added to it.
-    // Added, it lit the whole silhouette equally and drew a golden ring right
-    // the way around the moon — which is a halo, and a halo is the one thing
-    // atmospheric entry does not look like. The air is only being hit on one
-    // side, so only one side is allowed to glow.
-    float a = uBurn * pow(lead, 1.3) * (0.70 + 0.85 * limb);
-    if (a < 0.004) discard;
-    vec3 col = mix(vec3(1.0, 0.34, 0.08), vec3(1.0, 0.96, 0.88), pow(lead, 3.0));
-    gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
-  }
-`;
-
-function Burn({ nowRef }: { nowRef: MutableRefObject<number> }) {
-  const shell = useRef<THREE.Mesh>(null);
-  const shellMat = useRef<THREE.ShaderMaterial>(null);
-
-  useFrame(() => {
-    const now = nowRef.current;
-    // Out cold before it lands, and hard off at the impact. The sheath used to
-    // still be lit on the frame it hit, which left a glowing cap sitting on the
-    // floor underneath the break.
-    const b = now < BEAT.impact ? burn(now) : 0;
-    if (shell.current) {
-      shell.current.position.y = orbY(now);
-      shell.current.visible = b > 0.004;
-    }
-    if (shellMat.current) shellMat.current.uniforms.uBurn.value = b;
-  });
-
-  return (
-    <mesh ref={shell} renderOrder={2}>
-      <sphereGeometry args={[ORB_RADIUS * 1.22, 40, 28]} />
-      <shaderMaterial
-        ref={shellMat}
-        vertexShader={BURN_VERT}
-        fragmentShader={BURN_FRAG}
-        transparent
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        uniforms={{ uBurn: { value: 0 } }}
-      />
-    </mesh>
   );
 }
 
@@ -289,7 +228,6 @@ export default function Sky({ nowRef }: { nowRef: MutableRefObject<number> }) {
     <>
       <Wash nowRef={nowRef} />
       <Deck nowRef={nowRef} />
-      <Burn nowRef={nowRef} />
     </>
   );
 }

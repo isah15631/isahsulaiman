@@ -1,8 +1,9 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
+import { dayLight } from "@/lib/descent";
 
 // The concrete, and the hole it puts in it.
 //
@@ -88,6 +89,7 @@ const fragmentShader = /* glsl */ `
   uniform float uDust;
   uniform float uDent;
   uniform float uR;
+  uniform float uDay;
   varying vec2 vXY;
   varying vec3 vNormal;
   varying float vR;
@@ -159,6 +161,40 @@ const fragmentShader = /* glsl */ `
     vec3 warm = mix(vec3(1.0, 0.52, 0.24), vec3(0.55, 0.60, 0.72), smoothstep(0.0, 7.0, d));
     vec3 col = warm * tone * lit;
 
+    // Daylight on snow. The night look above is the glow of the broken glass in
+    // the dark; this is the sun on the ground it landed on, present the whole way
+    // out rather than pooled at the crater. A high, slightly raked sun so the
+    // crater rim still catches an edge and throws a soft shadow into the bowl in
+    // daylight too, otherwise the hole vanishes the moment the sky comes up.
+    // Snow takes its own tone, not the concrete's. Snow is smooth where sand is
+    // not, so the heavy blotching and fine grain that read as dune are pulled
+    // right down; what is left is a near-white field with a soft roll of relief
+    // and a sparse hard sparkle where the sun catches an ice facet, faded out
+    // with distance so it does not boil into moire across the drifts.
+    float detail = 1.0 / (1.0 + d * 0.13);
+    float snowTone = 0.86 + blotch * 0.16 + grain * 0.05 * detail + speck * 0.34 * detail;
+    // A faintly cooled white, the same snow the drifts and mountains are lit in,
+    // so the ground the moon lands on and the slopes behind it read as one field.
+    vec3 sand = vec3(0.90, 0.93, 0.99) * snowTone;
+    float sun = 0.55 + 0.6 * max(dot(normalize(vNormal), normalize(vec3(0.22, 1.0, 0.18))), 0.0);
+    // A strong cold bounce out of the open winter sky, so the crater's near wall
+    // goes blue in shadow rather than black: snow out of the sun is lit almost
+    // entirely by the sky above it.
+    vec3 dayLit = sand * sun + sand * vec3(0.34, 0.42, 0.60) * 0.5;
+
+    // The impact site is bare rock. A dark stone shelf stands in the snow at the
+    // centre, so the moon comes down ON rock rather than on soft snow, and it is
+    // here BEFORE the landing so the crash reads: a rock hitting a rock. The edge
+    // is broken up by the ground noise so it is a ragged outcrop, not a disc, and
+    // the crater is punched into it. Snow still lies in the hollows of the stone.
+    float rockEdge = (blotch - 0.5) * 1.6;
+    float rockMask = 1.0 - smoothstep(2.4 + rockEdge, 4.4 + rockEdge, d);
+    vec3 stone = vec3(0.20, 0.20, 0.23) * (0.55 + 0.85 * sun);
+    stone += vec3(0.30, 0.40, 0.56) * 0.12;
+    stone *= 0.82 + 0.4 * grain;
+    stone = mix(stone, dayLit, smoothstep(0.62, 0.92, blotch) * 0.5);
+    dayLit = mix(dayLit, stone, rockMask);
+
     // And the dust it kicked up, running outward as a ring and thinning as it
     // goes.
     float ring = exp(-pow((d - uDust * 6.5) / 0.75, 2.0));
@@ -170,9 +206,13 @@ const fragmentShader = /* glsl */ `
       smoothstep(0.0, 0.05, uDust) * (1.0 - smoothstep(0.35, 1.0, uDust));
     col += vec3(0.85, 0.72, 0.60) * ring * dustFade * 0.55;
 
+    // In the dark the floor is only as opaque as it is lit. In daylight the
+    // ground is simply there, so the sky does not read straight through it.
     float a = clamp(uFlash * lit * 1.5 + ring * dustFade * 0.5, 0.0, 1.0);
+    a = max(a, uDay);
     if(a < 0.004) discard;
-    gl_FragColor = vec4(col * uFlash + col * ring * dustFade * 0.4, a);
+    vec3 outCol = col * uFlash + col * ring * dustFade * 0.4 + dayLit * uDay;
+    gl_FragColor = vec4(outCol, a);
   }
 `;
 
@@ -180,9 +220,14 @@ type FloorProps = {
   y: number;
   /** Set true on the frame of impact; the fade runs itself from there. */
   struck: boolean;
+  /**
+   * The descent clock, so the ground can light itself as day arrives. Optional:
+   * without it the floor stays the night-only concrete it always was.
+   */
+  nowRef?: MutableRefObject<number>;
 };
 
-export default function Floor({ y, struck }: FloorProps) {
+export default function Floor({ y, struck, nowRef }: FloorProps) {
   const struckAtRef = useRef<number | null>(null);
 
   const material = useMemo(
@@ -199,6 +244,7 @@ export default function Floor({ y, struck }: FloorProps) {
           uFlash: { value: 0 },
           uDust: { value: 0 },
           uDent: { value: 0 },
+          uDay: { value: 0 },
           uFar: { value: FLOOR_FAR },
           uR: { value: CRATER_R },
           uDepth: { value: CRATER_DEPTH },
@@ -223,6 +269,11 @@ export default function Floor({ y, struck }: FloorProps) {
   );
 
   useFrame((state) => {
+    // The daylight rides the descent clock, not the impact, so the ground is
+    // already lit as it drops the last stretch into it. Updated before the
+    // struck guard, because the sky comes up whether or not it has landed yet.
+    if (nowRef) material.uniforms.uDay.value = dayLight(nowRef.current);
+
     const now = state.clock.getElapsedTime();
     if (!struck) return;
     if (struckAtRef.current === null) struckAtRef.current = now;

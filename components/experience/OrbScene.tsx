@@ -15,9 +15,19 @@ import {
   SPACE_Y,
   camY,
 } from "@/lib/descent";
+import { DOOR_POS } from "@/lib/approach";
+import ApproachCam from "./ApproachCam";
+import BlackOut from "./BlackOut";
+import DaySky from "./DaySky";
+import Debris from "./Debris";
+import DesertDoor from "./DesertDoor";
+import DuneRidges from "./DuneRidges";
 import Floor from "./Floor";
+import HeroDune from "./HeroDune";
+import LeaderButterflies from "./LeaderButterflies";
 import Orb from "./Orb";
 import Sky from "./Sky";
+import Snowfall from "./Snowfall";
 import Space from "./Space";
 
 // One shot, from a moon hanging in space to glass on concrete.
@@ -112,11 +122,19 @@ function Contents({ onImpact, onShardsLaunch }: OrbSceneProps) {
     <>
       <Clock nowRef={nowRef} />
       <Rig nowRef={nowRef} />
+      <ApproachCam nowRef={nowRef} doorPos={DOOR_POS} />
       {/* No lights anywhere in here. Every material does its own shading, and
           until the sphere lands there is nothing in this scene to light. */}
+      <DaySky nowRef={nowRef} />
+      <DuneRidges nowRef={nowRef} />
       <Space nowRef={nowRef} />
       <Sky nowRef={nowRef} />
-      <Floor y={FLOOR_Y} struck={struck} />
+      <Snowfall nowRef={nowRef} />
+      <Floor y={FLOOR_Y} struck={struck} nowRef={nowRef} />
+      <Debris nowRef={nowRef} />
+      <HeroDune nowRef={nowRef} />
+      <DesertDoor position={DOOR_POS} nowRef={nowRef} />
+      <LeaderButterflies nowRef={nowRef} doorPos={DOOR_POS} />
       <Orb
         geometry={geometry}
         nowRef={nowRef}
@@ -126,6 +144,9 @@ function Contents({ onImpact, onShardsLaunch }: OrbSceneProps) {
         }}
         onShardsLaunch={onShardsLaunch}
       />
+      {/* The dark the door opens onto, closing over the lens as we go through.
+          Last thing drawn, so it covers the whole shot. */}
+      <BlackOut nowRef={nowRef} />
     </>
   );
 }

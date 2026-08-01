@@ -32,9 +32,6 @@ const FLARE_LEAD = 0.1;
 /** Nothing of the sphere is left after this. */
 const SHATTER_END = CONVERT_MIN + CONVERT_SPAN + 0.08;
 
-/** How clear the glass is where you look straight through it. */
-const BODY_ALPHA = 0.55;
-
 const glsl = (n: number) => n.toFixed(4);
 
 const vertexShader = /* glsl */ `
@@ -230,22 +227,7 @@ const fragmentShader = /* glsl */ `
     // Both faces are drawn once it breaks, and a back face's normal points
     // into the piece, so it has to be turned round.
     vec3 nrm = normalize(vNormal) * (gl_FrontFacing ? 1.0 : -1.0);
-    float fres = pow(1.0 - abs(nrm.z), 2.5);
     vec3 sp = vPos + uSeed;
-
-    // The glass. Against a black page transparency would only read as dimness,
-    // so the body stays nearly opaque and the material is carried by its rim
-    // and its highlights instead: a dark cool interior, a bright cold edge, and
-    // a hard specular glint off a polished surface.
-    vec3 body = vec3(0.055, 0.075, 0.098);
-    body += vec3(0.30, 0.40, 0.52) * pow(fres, 0.6) * 0.32;
-    body += vec3(0.10, 0.13, 0.16) * (snoise(sp * 3.3) * 0.5 + 0.5) * 0.30;
-
-    vec3 sheen = vec3(0.62, 0.78, 0.95) * fres * 1.15;
-    vec3 L = normalize(vec3(0.42, 0.68, 0.60));
-    float ndl = max(dot(nrm, L), 0.0);
-    sheen += vec3(1.0, 0.99, 0.96) * pow(ndl, 42.0) * 0.95;
-    sheen += vec3(0.55, 0.68, 0.85) * pow(ndl, 7.0) * 0.22;
 
     // ---- whole, and falling ----
     //
@@ -321,22 +303,28 @@ const fragmentShader = /* glsl */ `
     }
 
     // ---- broken ----
-    // The warmth was in there all along; it is only visible now there is a
-    // broken edge for it to come out of.
-    float tone = snoise(sp * 1.8) * 0.5 + 0.5;
-    vec3 lit = mix(vec3(1.0, 0.34, 0.16), vec3(1.0, 0.76, 0.34), tone);
-    vec3 c = body * 0.8;
-    c += lit * (0.34 + 0.30 * tone);
-    // The inside of a piece is the side the light was on.
-    if(!gl_FrontFacing) c += lit * 0.5;
-    c += sheen * 0.9;
+    // It was a rock, so it comes apart into rock: cold grey stone, freshly split,
+    // darker in the fracture than on the weathered crust, lit by the one sun with
+    // a little cold sky bounce. No glass and no ember now — just the broken pieces
+    // of a moon, until each one turns.
+    float grit = snoise(sp * 5.5) * 0.5 + 0.5;
+    float fleck = snoise(sp * 22.0) * 0.5 + 0.5;
+    vec3 stone = mix(vec3(0.40, 0.395, 0.40), vec3(0.19, 0.19, 0.215), grit);
+    stone *= 0.86 + 0.24 * fleck;
+    vec3 L = normalize(vec3(0.42, 0.68, 0.60));
+    float ndl = max(dot(nrm, L), 0.0);
+    vec3 c = stone * (0.24 + 0.95 * ndl);
+    // cold sky fill, so the shaded side is blue-grey rather than black
+    c += stone * vec3(0.30, 0.40, 0.58) * 0.22 * (1.0 - ndl);
+    // the fresh inner face of a split piece is a shade brighter
+    if(!gl_FrontFacing) c += stone * 0.14;
 
-    // Each piece has its own moment. It catches the light, whites out, and is
-    // gone — and the swarm has a butterfly opening at that exact spot.
+    // Each piece still has its moment: it catches the light and whites out as its
+    // butterfly opens at that exact spot. A cold flash now, not a warm ember.
     float sConv = ${glsl(CONVERT_MIN)} + vChunk * ${glsl(CONVERT_SPAN)};
     float flare = smoothstep(sConv - ${glsl(FLARE_LEAD)}, sConv, uShatter);
-    c += vec3(1.0, 0.82, 0.55) * flare * 0.9;
-    c += vec3(1.0) * flare * flare * 0.7;
+    c += vec3(0.86, 0.92, 1.0) * flare * 0.7;
+    c += vec3(1.0) * flare * flare * 0.6;
 
     float a = 1.0 - smoothstep(sConv - ${glsl(CONVERT_FADE)}, sConv + ${glsl(CONVERT_FADE)} * 0.4, uShatter);
     if(a < 0.02) discard;

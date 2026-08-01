@@ -35,7 +35,7 @@ export const REST_Y = FLOOR_Y + ORB_RADIUS;
  * is spent on the part of the fall that is supposed to feel long — the vacuum, the
  * streaking, the deck coming up — and none of it is spent on the landing.
  */
-export const SPACE_Y = 120;
+export const SPACE_Y = 150;
 
 // The camera's final framing, which is the framing the landing was composed in
 // and is not up for negotiation: above the floor, looking slightly down it, with
@@ -68,14 +68,14 @@ export const BEAT = {
   hang: 0,
   /** and then it lets go */
   release: 1.5,
-  /** the top of the air. It starts to burn */
-  entry: 4.9,
+  /** the top of the air, where the long slow fall onto the snow begins */
+  entry: 5.2,
   /** into the deck */
-  cloud: 5.4,
-  /** out of the bottom of it, into the dark above the floor */
-  clear: 6.5,
+  cloud: 5.9,
+  /** out of the bottom of it, into the open air above the snow */
+  clear: 6.9,
   /** and lands */
-  impact: 7.3,
+  impact: 9.2,
 };
 
 /**
@@ -269,4 +269,25 @@ function speedAtHeight(y: number) {
 /** How far into the cloud deck we are, 0 above it and 1 below. */
 export function throughCloud(now: number) {
   return span(CLOUD_TOP, CLOUD_BASE, orbY(now));
+}
+
+/**
+ * Night on the way down, day at the bottom.
+ *
+ * The moon carries the day with it. Above the deck it is hanging in the dark
+ * with the stars; it is passing THROUGH the deck that turns the sky over, and by
+ * the time it is under the cloud the sun is up and it lands in the open. 0 in
+ * space, 1 on the ground.
+ *
+ * Tied to the deck rather than to the clock, the same way the air is, so if a
+ * beat in BEAT moves, the dawn moves with it. It is deliberately the same band
+ * the burn dies across: the fire on the way in becomes the daylight it lands in,
+ * rather than one fading out and a second thing fading up beside it.
+ *
+ * Smoothstepped so the horizon does not snap on: it is a dawn breaking over a
+ * couple of world units of fall, not a light switch.
+ */
+export function dayLight(now: number) {
+  const t = span(CLOUD_TOP, CLOUD_BASE, orbY(now));
+  return t * t * (3 - 2 * t);
 }

@@ -10,10 +10,19 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createOrbGeometry } from "@/lib/orbGeometry";
 import { BEAT, FLOOR_Y, FOV, SPACE_Y, camY, orbY, burn } from "@/lib/descent";
+import { APPROACH, THROUGH } from "@/lib/approach";
 import { Clock, Rig } from "@/components/experience/OrbScene";
+import ApproachCam from "@/components/experience/ApproachCam";
+import BlackOut from "@/components/experience/BlackOut";
+import DaySky from "@/components/experience/DaySky";
+import Debris from "@/components/experience/Debris";
+import DesertDoor from "@/components/experience/DesertDoor";
+import DuneRidges from "@/components/experience/DuneRidges";
 import Floor from "@/components/experience/Floor";
+import LeaderButterflies from "@/components/experience/LeaderButterflies";
 import Orb from "@/components/experience/Orb";
 import Sky from "@/components/experience/Sky";
+import Snowfall from "@/components/experience/Snowfall";
 import Space from "@/components/experience/Space";
 
 declare global {
@@ -95,6 +104,8 @@ function Expose({
   return null;
 }
 
+const DOOR_POS: [number, number, number] = [1.5, FLOOR_Y, -3.5];
+
 export default function DevSpace() {
   const geometry = useMemo(() => createOrbGeometry(7), []);
   const [struck, setStruck] = useState(false);
@@ -116,9 +127,17 @@ export default function DevSpace() {
         <Expose struck={struck} nowRef={nowRef} />
         <Clock nowRef={nowRef} />
         <Rig nowRef={nowRef} />
+        <DaySky nowRef={nowRef} />
+        <DuneRidges nowRef={nowRef} />
         <Space nowRef={nowRef} />
         <Sky nowRef={nowRef} />
-        <Floor y={FLOOR_Y} struck={struck} />
+        <Snowfall nowRef={nowRef} />
+        <Floor y={FLOOR_Y} struck={struck} nowRef={nowRef} />
+        <Debris nowRef={nowRef} />
+        <DesertDoor position={DOOR_POS} nowRef={nowRef} />
+        <LeaderButterflies nowRef={nowRef} doorPos={DOOR_POS} />
+        <ApproachCam nowRef={nowRef} doorPos={DOOR_POS} />
+        <BlackOut nowRef={nowRef} />
         <Orb
           geometry={geometry}
           nowRef={nowRef}
@@ -126,7 +145,7 @@ export default function DevSpace() {
         />
       </Canvas>
       <div style={{ position: "fixed", bottom: 8, left: 8, color: "#556", font: "11px monospace" }}>
-        impact at {BEAT.impact}s
+        impact {BEAT.impact}s · approach {APPROACH.start}-{APPROACH.end}s · through {THROUGH.end}s
       </div>
     </div>
   );
