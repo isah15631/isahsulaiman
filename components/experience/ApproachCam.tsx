@@ -69,13 +69,14 @@ export default function ApproachCam({
     // A: where the landing left the camera, the same pose the rig holds.
     vecs.a.set(0, EYE_Y, dist);
     vecs.aLook.set(0, LOOK_Y, 0);
-    // V: pulled well back and lifted, so the vista takes in the whole sweep of
-    // the snow world — the crash site small in the foreground, the door out on
-    // the field, and the mountains towering behind it. Standing back this far and
-    // this high is what gives the shot its scale: the door reads as a speck under
-    // a range of giants, which is the size the world is meant to feel.
-    vecs.v.set(0.9, 2.6, dist + 7.5);
-    vecs.vLook.set(1.2, 1.15, -9.5);
+    // V: pulled back and lifted to take in the sweep of the snow world — the
+    // crash site in the foreground, the door out on the field, the mountains
+    // behind. Not pulled back so far that the swarm turns to confetti, though:
+    // the scale is carried by the towering far mountains, not by shrinking the
+    // whole shot, so this sits at a middle distance where the butterflies still
+    // read as butterflies.
+    vecs.v.set(0.85, 2.05, dist + 4.5);
+    vecs.vLook.set(1.2, 1.25, -8.0);
     // B: standing off the door, gaze lifted so it stands low against the sky.
     vecs.b.set(cx, cy + EYE_ABOVE, cz + STANDOFF);
     vecs.bLook.set(cx, cy + DOOR_MID + VISTA_LIFT, cz);

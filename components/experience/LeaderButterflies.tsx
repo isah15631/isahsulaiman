@@ -92,7 +92,8 @@ type Flyer = {
   end: [number, number, number];
   phase: number;
   flap: number;
-  wander: [number, number];
+  swirl: number; // how wide it corkscrews mid-flight
+  turns: number; // how many times it winds around on the way in
   startAt: number; // fraction of the lead when it sets off
   arriveBy: number; // fraction of the lead by which it is inside the door
 };
@@ -129,17 +130,25 @@ function makeFlyers(doorPos: [number, number, number]): Flyer[] {
     const sz = c * 0.5;
     return {
       color: SWARM[i % SWARM.length],
-      size: 0.18 + c * 0.12,
+      size: 0.26 + c * 0.16,
       // out of the crater
       start: [sx, sy, sz],
-      // thrown up and out first, so the flight bursts before it homes in
-      ctrl: [sx * 1.7 + (d - 0.5) * 1.3, 1.1 + e * 2.1, sz + 0.3 + (a - 0.5) * 0.6],
+      // Thrown up and WIDE first: the burst fans out into a tall dome all around
+      // the crater — some pieces even flung back toward the camera — before the
+      // flight curls in toward the door, so the moon reads as bursting open rather
+      // than spouting a tidy column.
+      ctrl: [
+        Math.cos(ang) * (2.2 + c * 2.6) + (d - 0.5) * 0.8,
+        1.8 + e * 2.6,
+        Math.sin(ang) * (1.7 + b * 2.2) + sz + (a - 0.5) * 0.6,
+      ],
       // gathered into the mouth of the opening, kept inside the leaf so the whole
       // stream funnels through the doorway rather than spilling around its edges
       end: [DOOR_X + (c - 0.5) * 0.7, OPEN_MID + (d - 0.5) * 1.3, OPEN_Z + (a - 0.5) * 0.25],
       phase: a * 6.283,
       flap: 8.2 + b * 2.4,
-      wander: [0.14 + c * 0.14, 0.12 + d * 0.14],
+      swirl: 0.5 + b * 0.8,
+      turns: 0.5 + c * 1.0,
       startAt: a * 0.22,
       arriveBy: 0.7 + b * 0.28,
     };
@@ -191,14 +200,21 @@ export default function LeaderButterflies({
       const bx = it * it * f.start[0] + 2 * it * ep * f.ctrl[0] + ep * ep * f.end[0];
       const by = it * it * f.start[1] + 2 * it * ep * f.ctrl[1] + ep * ep * f.end[1];
       const bz = it * it * f.start[2] + 2 * it * ep * f.ctrl[2] + ep * ep * f.end[2];
-      const damp = 1 - ep;
-      const x = bx + Math.sin(t * 0.9 + f.phase) * f.wander[0] * damp;
-      const y = by + Math.sin(t * 1.3 + f.phase) * f.wander[1] * damp;
-      m.position.set(x, y, bz);
+      // A corkscrew along the flight: widest in the middle and unwinding to
+      // nothing at both ends, so each one spirals in and still arrives clean in
+      // the mouth of the door. The slow drift on t keeps the whole swarm turning.
+      const spin = Math.sin(ep * Math.PI) * f.swirl;
+      const sa = ep * f.turns * 6.283 + f.phase + t * 0.6;
+      const x = bx + Math.cos(sa) * spin;
+      const y = by + Math.sin(sa) * spin * 0.55;
+      const z = bz + Math.sin(sa * 0.7) * spin * 0.4;
+      m.position.set(x, y, z);
 
-      // face the camera, then flap by squashing width
+      // face the camera, then flap by squashing width. The wings only ever fold
+      // to a bit past half, not to a sliver, so at any instant each one still
+      // reads as an open butterfly rather than an edge-on line.
       m.quaternion.copy(camera.quaternion);
-      const beat = 0.22 + 0.78 * (0.5 + 0.5 * Math.sin(t * f.flap + f.phase));
+      const beat = 0.58 + 0.42 * (0.5 + 0.5 * Math.sin(t * f.flap + f.phase));
       m.scale.set(f.size * beat, f.size, 1);
 
       // appear leaving the crater, wink out AS it reaches the opening: the

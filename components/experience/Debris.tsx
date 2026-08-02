@@ -43,15 +43,42 @@ const FRAG = /* glsl */ `
   void main(){
     vec3 n = normalize(vN);
     float sun = max(dot(n, ${SUN}), 0.0);
-    // Lit face, plus a cold sky fill so the shadowed side is blue rather than
-    // dead black, the same way the snow around it is lit.
-    vec3 col = uColor * (0.34 + 0.72 * sun)
-             + uColor * vec3(0.30, 0.40, 0.58) * 0.26 * (1.0 - sun);
+    // Lit face over a generous cold sky fill, so even the faces turned away from
+    // the sun stay a readable blue-grey stone rather than going near-black.
+    vec3 col = uColor * (0.5 + 0.6 * sun)
+             + uColor * vec3(0.30, 0.40, 0.58) * 0.34 * (1.0 - sun);
     // Snow caught on the upward faces, so the debris wears the same weather as
     // the ground it is lying in.
     float up = smoothstep(0.30, 0.85, n.y);
     col = mix(col, vec3(0.90, 0.93, 1.0) * (0.5 + 0.5 * sun), up * uSnowy);
     gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+// The shadow the debris lays on the snow. A soft blue-grey ellipse stretched
+// away from the low sun, so each piece casts a long raking shadow across the
+// field and reads as sitting ON the snow rather than floating over it. Drawn
+// flat on the ground and faded in as the debris settles.
+const SHADOW_DIR = new THREE.Vector2(0.30, 1.0).normalize(); // (x, z) on the ground
+
+const SHADOW_VERT = /* glsl */ `
+  varying vec2 vUv;
+  void main(){
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const SHADOW_FRAG = /* glsl */ `
+  uniform float uOpacity;
+  varying vec2 vUv;
+  void main(){
+    // Soft ellipse, densest in the middle and feathering to nothing at the rim.
+    float d = length(vUv - 0.5) * 2.0;
+    float a = (1.0 - smoothstep(0.1, 1.0, d)) * uOpacity;
+    if (a < 0.004) discard;
+    // Laid over the snow as alpha, so it darkens toward the cool blue a shadow
+    // on snow actually is.
+    gl_FragColor = vec4(0.32, 0.40, 0.55, a * 0.62);
   }
 `;
 
@@ -74,14 +101,14 @@ type Chunk = {
 // The point everything is thrown from: the crater, just above the floor.
 const LAUNCH = new THREE.Vector3(0, FLOOR_Y + 0.25, 0);
 
-const ROCK = new THREE.Color(0.24, 0.235, 0.25);
-const ROCK_DARK = new THREE.Color(0.15, 0.148, 0.165);
+const ROCK = new THREE.Color(0.30, 0.295, 0.31);
+const ROCK_DARK = new THREE.Color(0.21, 0.207, 0.225);
 const ICE = new THREE.Color(0.72, 0.80, 0.92);
 
 function makeChunks(): Chunk[] {
   const out: Chunk[] = [];
 
-  // The boulder: the moon itself, come to rest as a dark rock in the crater.
+  // The boulder: the moon itself, come to rest as a rock in the crater.
   out.push({
     target: new THREE.Vector3(0.1, FLOOR_Y + 0.16, 0.15),
     scale: new THREE.Vector3(0.62, 0.44, 0.58),
@@ -89,7 +116,7 @@ function makeChunks(): Chunk[] {
     fly: 0.42,
     axis: new THREE.Vector3(0.3, 0.8, 0.2).normalize(),
     spin: 1.6,
-    color: ROCK_DARK,
+    color: ROCK,
     snowy: 0.5,
   });
 
@@ -99,7 +126,7 @@ function makeChunks(): Chunk[] {
     const c = rand(i + 91);
     const d = rand(i + 143);
     const ang = a * Math.PI * 2;
-    const r = 1.1 + b * 2.7; // scattered out across the snow
+    const r = 1.3 + b * 3.4; // scattered out across the snow, some past the crater
     const size = 0.09 + c * 0.2;
     const isIce = d > 0.58;
     out.push({
@@ -152,6 +179,26 @@ export default function Debris({
 
   const q = useMemo(() => new THREE.Quaternion(), []);
 
+  // The flat quad the shadows are drawn on, and one shared material for all of
+  // them, faded in together as the debris comes to rest.
+  const shadowGeom = useMemo(() => {
+    const g = new THREE.PlaneGeometry(1, 1);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }, []);
+  const shadowMat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: SHADOW_VERT,
+        fragmentShader: SHADOW_FRAG,
+        transparent: true,
+        depthWrite: false,
+        uniforms: { uOpacity: { value: 0 } },
+      }),
+    []
+  );
+  const shadowAngle = Math.atan2(SHADOW_DIR.x, SHADOW_DIR.y);
+
   useFrame(() => {
     const g = group.current;
     if (!g) return;
@@ -162,6 +209,10 @@ export default function Debris({
       return;
     }
     g.visible = true;
+
+    // The shadows arrive with the debris, fading up over the first second.
+    const so = Math.min(1, t);
+    shadowMat.uniforms.uOpacity.value = so * so * (3 - 2 * so);
 
     for (let i = 0; i < chunks.length; i++) {
       const ch = chunks[i];
@@ -186,6 +237,7 @@ export default function Debris({
 
   return (
     <group ref={group} visible={false}>
+      {/* the chunks — indexed first, so the frame loop can drive them by order */}
       {chunks.map((ch, i) => (
         <mesh
           key={i}
@@ -194,6 +246,29 @@ export default function Debris({
           scale={ch.scale}
         />
       ))}
+      {/* their shadows, laid flat on the snow at each landing spot and raked away
+          from the sun. Static, so they are not touched by the frame loop above. */}
+      {chunks.map((ch, i) => {
+        const radius = Math.max(ch.scale.x, ch.scale.z);
+        const width = radius * 2.6;
+        const length = radius * 5.5;
+        const off = length * 0.22;
+        return (
+          <mesh
+            key={`shadow-${i}`}
+            geometry={shadowGeom}
+            material={shadowMat}
+            position={[
+              ch.target.x + SHADOW_DIR.x * off,
+              FLOOR_Y + 0.012,
+              ch.target.z + SHADOW_DIR.y * off,
+            ]}
+            rotation={[0, shadowAngle, 0]}
+            scale={[width, 1, length]}
+            renderOrder={1}
+          />
+        );
+      })}
     </group>
   );
 }

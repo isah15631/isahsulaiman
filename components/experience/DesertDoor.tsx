@@ -157,10 +157,12 @@ export default function DesertDoor({
         fragmentShader: /* glsl */ `
           varying vec2 vUv;
           void main(){
-            // A soft pool under the door, thrown a little the way the sun rakes.
-            vec2 p = (vUv - vec2(0.42, 0.5)) * vec2(1.0, 1.9);
-            float a = smoothstep(0.5, 0.0, length(p)) * 0.5;
-            gl_FragColor = vec4(0.02, 0.015, 0.01, a);
+            // A soft pool under the door, raked out the way the low sun throws it.
+            // Cool blue-grey, the colour a shadow on snow is, not the warm near
+            // black it was in the sand.
+            vec2 p = (vUv - vec2(0.42, 0.34)) * vec2(1.0, 2.4);
+            float a = smoothstep(0.5, 0.0, length(p)) * 0.6;
+            gl_FragColor = vec4(0.30, 0.38, 0.52, a);
           }
         `,
       }),

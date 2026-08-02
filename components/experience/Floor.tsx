@@ -90,6 +90,7 @@ const fragmentShader = /* glsl */ `
   uniform float uDent;
   uniform float uR;
   uniform float uDay;
+  uniform float uTime;
   varying vec2 vXY;
   varying vec3 vNormal;
   varying float vR;
@@ -172,15 +173,34 @@ const fragmentShader = /* glsl */ `
     // and a sparse hard sparkle where the sun catches an ice facet, faded out
     // with distance so it does not boil into moire across the drifts.
     float detail = 1.0 / (1.0 + d * 0.13);
-    float snowTone = 0.86 + blotch * 0.16 + grain * 0.05 * detail + speck * 0.34 * detail;
+    // Wind-carved drift: long low ridges combed across the field by the wind, so
+    // the flat snow is not a dead sheet. A directional ripple broken up by the
+    // blotch noise so it wanders rather than stripes, and faded with distance so
+    // it never aliases out across the plane.
+    float along = dot(vXY, vec2(0.94, 0.34));
+    float drift = sin(along * 1.05 + blotch * 5.0) * (0.5 + 0.5 * fbm(vXY * 0.32));
+    float snowTone = 0.86 + blotch * 0.16 + grain * 0.05 * detail
+                   + speck * 0.34 * detail + drift * 0.055 * detail;
     // A faintly cooled white, the same snow the drifts and mountains are lit in,
     // so the ground the moon lands on and the slopes behind it read as one field.
     vec3 sand = vec3(0.90, 0.93, 0.99) * snowTone;
-    float sun = 0.55 + 0.6 * max(dot(normalize(vNormal), normalize(vec3(0.22, 1.0, 0.18))), 0.0);
-    // A strong cold bounce out of the open winter sky, so the crater's near wall
-    // goes blue in shadow rather than black: snow out of the sun is lit almost
-    // entirely by the sky above it.
-    vec3 dayLit = sand * sun + sand * vec3(0.34, 0.42, 0.60) * 0.5;
+    float sun = max(dot(normalize(vNormal), normalize(vec3(0.22, 1.0, 0.18))), 0.0);
+    // A warm winter sun on the lit snow over a cool sky fill in the shade, so the
+    // ground carries a clear light direction and temperature instead of a flat
+    // wash: the open field reads warm-white and the shaded crater walls go blue.
+    vec3 dayLit = sand * 0.42
+                + sand * vec3(0.85, 0.78, 0.64) * sun
+                + sand * vec3(0.20, 0.30, 0.52) * (1.0 - sun);
+
+    // Ice glints: a sparse scatter of hard bright specks that catch the sun and
+    // twinkle, only on the near snow so the far field does not boil. This is the
+    // life in the white — a still snowfield reads as a void; a twinkling one is
+    // cold and vast and alive.
+    vec2 gcell = floor(vXY * 82.0);
+    float glint = smoothstep(0.9, 1.0, hash(gcell));
+    glint *= 0.5 + 0.5 * sin(uTime * 3.1 + hash(gcell + 3.7) * 6.283);
+    float glintFade = 1.0 / (1.0 + d * d * 0.06);
+    dayLit += vec3(1.0, 0.99, 0.96) * glint * glintFade * 0.7 * (0.3 + 0.7 * sun);
 
     // The impact site is bare rock. A dark stone shelf stands in the snow at the
     // centre, so the moon comes down ON rock rather than on soft snow, and it is
@@ -245,6 +265,7 @@ export default function Floor({ y, struck, nowRef }: FloorProps) {
           uDust: { value: 0 },
           uDent: { value: 0 },
           uDay: { value: 0 },
+          uTime: { value: 0 },
           uFar: { value: FLOOR_FAR },
           uR: { value: CRATER_R },
           uDepth: { value: CRATER_DEPTH },
@@ -275,6 +296,8 @@ export default function Floor({ y, struck, nowRef }: FloorProps) {
     if (nowRef) material.uniforms.uDay.value = dayLight(nowRef.current);
 
     const now = state.clock.getElapsedTime();
+    // Time drives the sparkle twinkle, so it runs whether or not it has landed.
+    material.uniforms.uTime.value = now;
     if (!struck) return;
     if (struckAtRef.current === null) struckAtRef.current = now;
     const t = now - struckAtRef.current;
