@@ -7,23 +7,15 @@ import {
 } from "framer-motion";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  ABOUT,
-  PROJECTS,
-  HOBBIES,
-  CONTACT,
-  STACK,
-  type Hobby,
-} from "@/lib/content";
-import { SWARM } from "@/lib/palette";
-import { playClick } from "@/lib/audio";
+import { ABOUT, PROJECTS, CONTACT, STACK } from "@/lib/content";
+import BrickWall from "./BrickWall";
 import Carrier from "./Carrier";
 import Companion from "./Companion";
-import HobbyRoll from "./HobbyRoll";
-import HobbyScroll from "./HobbyScroll";
-import LightBulb from "./LightBulb";
-import PortraitAssembly from "./PortraitAssembly";
+import Digressions from "./Digressions";
+import FireButterfly from "./FireButterfly";
+import PortraitFrame from "./PortraitFrame";
 import RoomButterflies from "./RoomButterflies";
+import Torch from "./Torch";
 
 type SectionKey = "about" | "projects" | "hobbies" | "contact";
 const MENU: { key: SectionKey; label: string }[] = [
@@ -96,19 +88,6 @@ const room: Variants = {
 /** Each pane owns its own scrolling, so neither can disturb the other's. */
 const PANE = "absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar";
 
-// The portrait's shape: a dome at the top, gently rounded below. Not a full
-// oval, which crops a head into a locket, and not a rectangle, which was the
-// flattest thing on the page. The two radii per corner are what make it an
-// arch rather than a stadium: 50% horizontally at the top so the curve starts
-// from the centre line, but only about half that vertically, so it domes
-// without ever reaching the crown of the head.
-const ARCH = "50% 50% 44% 44% / 52% 52% 16% 16%";
-const ARCH_INNER = "50% 50% 43% 43% / 51% 51% 15% 15%";
-
-/** The lower edge goes into the page rather than stopping at an edge. */
-const DISSOLVE =
-  "linear-gradient(to bottom, #000 58%, rgba(0,0,0,0.55) 82%, transparent 100%)";
-
 // Carrying the address in. Shorter than the welcome's lift: you have already
 // seen this done once, and the second time it should be a nod rather than a
 // performance. It waits for the fall to land before starting.
@@ -117,74 +96,26 @@ const MAIL_LIFT = 2.2;
 const MAIL_RELEASE = MAIL_DELAY + MAIL_LIFT + 0.5;
 const MAIL_TOTAL = MAIL_RELEASE + 1.6;
 
-/**
- * The same light, reachable from inside a section.
- *
- * You fell down into this room, so the lamp is above you and its cord comes
- * down out of the top of the frame. Pull it and the reading goes dark and the
- * only things left are the butterflies, which are faint precisely because the
- * lamp is off.
- *
- * It lives outside the panes, fixed to the frame, so it does not travel with
- * the fall. The light belongs to the room, not to the page you are on.
- */
-function SectionCord({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <motion.button
-      type="button"
-      onClick={() => {
-        playClick();
-        onToggle();
-      }}
-      aria-label={on ? "Turn the light off" : "Turn the light on"}
-      aria-pressed={on}
-      className="pointer-events-auto absolute right-5 top-0 z-30 flex cursor-pointer flex-col items-center p-3 sm:right-8"
-      initial={{ opacity: 0, y: -12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.5, delay: 0.35, ease: "easeOut" }}
-    >
-      <motion.span
-        className="block"
-        style={{
-          width: "1.5px",
-          backgroundColor: "rgba(255,255,255,0.28)",
-          backgroundImage:
-            "linear-gradient(to bottom, rgba(255,255,255,0.2), rgba(255,255,255,0.6))",
-        }}
-        animate={{ height: 52 }}
-        whileHover={{ height: 60 }}
-        whileTap={{ height: 72 }}
-        transition={{ type: "spring", stiffness: 320, damping: 18 }}
-      />
-      <motion.span
-        className="relative block h-[7px] w-[7px] rounded-full"
-        style={{ background: "rgba(226,220,208,0.75)" }}
-        whileHover={{ scale: 1.25 }}
-        whileTap={{ scale: 0.9 }}
-        transition={{ type: "spring", stiffness: 320, damping: 18 }}
-      >
-        {/* Breathing while the room is dark. This is the only way back to the
-            light from in here, so it has to announce itself. */}
-        {!on && (
-          <motion.span
-            className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ background: "rgba(242,181,68,0.5)" }}
-            animate={{ opacity: [0, 0.55, 0], scale: [0.6, 1.9, 0.6] }}
-            transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-          />
-        )}
-      </motion.span>
-    </motion.button>
-  );
-}
-
-export default function Sections() {
+export default function Sections({
+  ignited,
+  onIgnite,
+}: {
+  ignited: boolean;
+  onIgnite: () => void;
+}) {
   const [selected, setSelected] = useState<SectionKey | null>(null);
-  // The room starts dark. Finding the switch is the point.
-  const [lightOn, setLightOn] = useState(false);
+  // The room is lit once the torch has caught, and it never goes out again:
+  // there is no switch any more. `lit` simply follows the world's one-way latch.
+  const lit = ignited;
   // Which way we are travelling: into a section, or back up to the menu.
   const [down, setDown] = useState(true);
+
+  // The fire-winged butterfly plays exactly once, the first time we arrive in a
+  // room that has not been lit yet. It lights the torch (onIgnite) as it reaches
+  // it, then drifts off and is gone.
+  const [firePlaying, setFirePlaying] = useState(!ignited);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // The lamp is overhead and it stays there, so this is a constant string and
   // not a value derived from anything.
@@ -218,6 +149,15 @@ export default function Sections() {
     // is falling past the other they would otherwise share a scrollbar and
     // fight over its height.
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#070504] text-neutral-200">
+      {/* the wall the torch is strapped to, at the very back of the room */}
+      <BrickWall />
+
+      {/* The torch is a fixture of the room, not of the menu. It is mounted here,
+          at the room root and outside the panes that slide, so it stays nailed to
+          exactly the same spot on the wall whether you are at the menu or dropped
+          into a section. Every page is lit by this one flame. */}
+      <Torch lit={lit} />
+
       {/* warm vignette so sections feel like the world the butterflies made */}
       <motion.div
         className="pointer-events-none fixed inset-0"
@@ -226,35 +166,38 @@ export default function Sections() {
             "radial-gradient(120% 90% at 50% 0%, rgba(255,120,60,0.08), transparent 55%)",
         }}
         initial={false}
-        animate={{ opacity: lightOn ? 1 : 0.25 }}
+        animate={{ opacity: lit ? 1 : 0.25 }}
         transition={{ duration: 0.6 }}
       />
 
       {/* Placed before the content on purpose. Positioned siblings with no
           stacking of their own paint in DOM order, so they pass behind the
           words rather than across them. */}
-      {/* lamp: the bulb is lit AND you are in the room with it, so there is
+      {/* lamp: the torch is lit AND you are in the room with it, so there is
           something to fly to. Down in a section it is above the ceiling. */}
-      <RoomButterflies lit={lightOn} lamp={lightOn && selected === null} />
+      <RoomButterflies lit={lit} lamp={lit && selected === null} />
 
       {/* One of them comes down with you when you open a section, hangs there a
           while, and climbs back out. Keyed on the section so each drop gets its
           own, and mounted out here rather than in the pane so it does not travel
           with the fall: it is doing its own falling. */}
       <AnimatePresence>
-        {selected !== null && <Companion key={selected} lit={lightOn} />}
+        {selected !== null && <Companion key={selected} lit={lit} />}
       </AnimatePresence>
 
-      {/* the cord, only once you are down here with the lamp above you */}
-      <AnimatePresence>
-        {selected !== null && (
-          <SectionCord
-            key="cord"
-            on={lightOn}
-            onToggle={() => setLightOn((v) => !v)}
-          />
+      {/* The one on fire. Portalled to the body so it burns ABOVE the world's
+          grayscale — the single colour in the grey — then it lights the torch and
+          colour spreads from there. It plays once and is gone. */}
+      {mounted &&
+        firePlaying &&
+        selected === null &&
+        createPortal(
+          <FireButterfly
+            onReach={onIgnite}
+            onDone={() => setFirePlaying(false)}
+          />,
+          document.body
         )}
-      </AnimatePresence>
 
       {/* initial={false}: on the very first arrival the menu should simply be
           here, with the lamp lowering into it. Only later moves are falls. */}
@@ -270,13 +213,8 @@ export default function Sections() {
             className={PANE}
           >
             <div className="relative flex min-h-full flex-col items-center justify-center">
-              <LightBulb
-                on={lightOn}
-                onToggle={() => setLightOn((v) => !v)}
-              />
-
-              {/* The menu only exists while the light is on. Off, the room is
-                  dark and there is nothing to read or click.
+              {/* The menu only exists once the torch is lit. Before that the room
+                  is dark and there is nothing to read or click.
 
                   It is lit, not faded in. Light does not make a thing arrive, it
                   makes a thing visible, so the words brighten from almost unlit,
@@ -289,19 +227,18 @@ export default function Sections() {
                   would outrank the hover:text-ember class and kill the hover. */}
               <motion.nav
                 className="relative z-10 mt-[26vh] flex flex-col items-center gap-6"
-                aria-hidden={!lightOn}
-                // dims as the lamp swings off them; the per-item lighting below
-                // is a separate filter and the two compose
+                aria-hidden={!lit}
+                // the torchlight catching the letterforms
                 style={{ filter: LIT }}
               >
                 {MENU.map((m, i) => (
                   <motion.button
                     key={m.key}
                     onClick={() => open(m.key)}
-                    tabIndex={lightOn ? 0 : -1}
+                    tabIndex={lit ? 0 : -1}
                     initial={false}
                     animate={
-                      lightOn
+                      lit
                         ? {
                             opacity: [0, 1, 1],
                             filter: [
@@ -322,7 +259,7 @@ export default function Sections() {
                           }
                     }
                     transition={
-                      lightOn
+                      lit
                         ? {
                             duration: 0.85,
                             times: [0, 0.35, 1],
@@ -332,7 +269,7 @@ export default function Sections() {
                         : { duration: 0.3, ease: "easeOut" }
                     }
                     className={`font-serif text-3xl font-light tracking-wide text-neutral-200 transition-colors duration-500 hover:text-ember md:text-5xl ${
-                      lightOn ? "" : "pointer-events-none"
+                      lit ? "" : "pointer-events-none"
                     }`}
                   >
                     {m.label}
@@ -358,7 +295,7 @@ export default function Sections() {
             <motion.section
               className="relative mx-auto min-h-full w-full max-w-3xl px-6 py-24"
               initial={false}
-              animate={{ opacity: lightOn ? 1 : 0.045 }}
+              animate={{ opacity: lit ? 1 : 0.045 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
             >
               <button
@@ -393,64 +330,11 @@ function About() {
     <div>
       <Heading>About</Heading>
       <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
-        {/* The portrait carries the same idea as the heart: colour returning to
-            something that began without it. It warms out of grayscale as it
-            arrives, and its lower edge dissolves into the page instead of
-            stopping at a hard rectangle, which on a phone was the flattest
-            thing on the site. */}
-        {/* Smaller on a phone than it was. At 78% of the column and a 3:4 crop
-            it stood 360px tall, which is most of a screen spent on a headshot
-            before a word has been read — and a portrait that fills the view
-            reads as a profile page rather than as a picture on a wall. Hung at
-            a size you take in at a glance instead. */}
-        <div className="relative mx-auto w-[min(58%,12.5rem)] shrink-0 md:mx-0 md:w-44">
-          {/* warm light pooling behind him, echoing the bulb */}
-          <div
-            className="pointer-events-none absolute -inset-x-8 -inset-y-6 -z-10 blur-2xl"
-            style={{
-              background:
-                "radial-gradient(ellipse at 50% 45%, rgba(255,150,80,0.18), rgba(255,130,60,0.05) 55%, transparent 78%)",
-            }}
-          />
-          {/* An outer rule, standing off the picture. Two lines at different
-              distances is what separates a frame from a border. */}
-          <div
-            className="pointer-events-none absolute -inset-[9px]"
-            style={{
-              borderRadius: ARCH,
-              border: "1px solid rgba(226,196,150,0.16)",
-              WebkitMaskImage: DISSOLVE,
-              maskImage: DISSOLVE,
-            }}
-          />
-          <motion.div
-            // The frame IS the padding: a one-pixel gradient behind the
-            // picture, showing only at the edge. A plain border cannot do this
-            // because a border takes one flat colour, and this one has to be
-            // bright along the top and gone by the bottom. The lamp is above.
-            className="relative aspect-[3/4] p-px"
-            style={{
-              borderRadius: ARCH,
-              background:
-                "linear-gradient(to bottom, rgba(232,202,152,0.6), rgba(232,202,152,0.16) 45%, rgba(232,202,152,0) 78%)",
-              // Carries the dissolve for the frame as well as the photograph,
-              // so the whole thing sinks into the page together rather than
-              // the picture fading out inside a frame that does not.
-              WebkitMaskImage: DISSOLVE,
-              maskImage: DISSOLVE,
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            <div
-              className="h-full w-full overflow-hidden"
-              style={{ borderRadius: ARCH_INNER }}
-            >
-              <PortraitAssembly src={ABOUT.photo} alt={ABOUT.name} />
-            </div>
-          </motion.div>
-        </div>
+        {/* The portrait is a framed picture hanging on the wall of the room: it
+            waits in grayscale and warms into colour as the torch's light reaches
+            it, and it is assembled out of a grayscale swarm rather than loaded.
+            All of that lives in PortraitFrame. */}
+        <PortraitFrame src={ABOUT.photo} alt={ABOUT.name} />
         <div className="font-sans text-[15px] leading-relaxed text-neutral-300">
           <p className="mb-1 font-serif text-2xl text-neutral-100">{ABOUT.name}</p>
           <p className="mb-6 text-sm uppercase tracking-widest text-ember/80">
@@ -596,111 +480,14 @@ function Projects() {
   );
 }
 
-// Each object is lent one of the swarm's colours, cycled. The whole set, gold
-// and bone included: the reason those two were kept off the old cards was that
-// a coloured glow behind a panel of text stops reading as colour and starts
-// reading as lamplight. Nothing here is a panel. The colour is a soft wash
-// behind a drawn object and a fill in its wings, and at that job gold is one of
-// the best of them.
-const HOBBY_COLORS = SWARM;
-
-/** Matches the object's own aspect, so the grid does not reflow when one leaves. */
-const OBJECT_SIZE = 152;
-const OBJECT_BOX = Math.round((OBJECT_SIZE * 78) / 116);
-
-/**
- * The shelf.
- *
- * Scrolls hanging in the dark, each wearing the swarm's wings and each tied with
- * its own colour. They are all the same drawing, which is the point: a hobby is
- * now a line of content and a colour rather than a bespoke object somebody has
- * to draw, so the eighth one costs nothing.
- *
- * While one is open, its instance is deliberately NOT rendered here. Two
- * elements sharing a layoutId at the same time is a conflict, and the shared
- * transition works precisely by one unmounting as the other mounts — so the
- * grid keeps a same-sized hole where the object was, and the object itself is
- * now sitting at the top of the scroll.
- */
+// Digressions is no longer a shelf of winged scrolls you pick one from. It is a
+// column of already-open parchments hanging down the wall in the dark, and the
+// one you have scrolled over the torch is the only one you can read. The whole
+// behaviour lives in the Digressions component; the section just hands it the
+// space. No <Heading>, because the reading here is the parchments themselves and
+// a bright title over a dark room would break the one-flame mood.
 function Hobbies() {
-  const [open, setOpen] = useState<Hobby["key"] | null>(null);
-  // The scroll is a modal and has to be measured against the window, but every
-  // ancestor it has here is transformed — the pane the sections ride in moves
-  // on the y axis — and a transformed ancestor becomes the containing block for
-  // anything `fixed` inside it. So it goes to the body instead. React portals
-  // keep context, so the shared layout transition still finds its partner.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  const openIndex = HOBBIES.findIndex((h) => h.key === open);
-  const openHobby = openIndex >= 0 ? HOBBIES[openIndex] : null;
-
-  return (
-    <div>
-      <Heading>Digressions</Heading>
-      <p className="-mt-6 mb-12 font-sans text-[11px] uppercase tracking-[0.2em] text-neutral-600">
-        Pick one up
-      </p>
-
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
-        {HOBBIES.map((h, i) => (
-          <li key={h.key} className="flex justify-center">
-            <motion.button
-              type="button"
-              onClick={() => setOpen(h.key)}
-              aria-label={`Open ${h.title}`}
-              className="group flex flex-col items-center rounded-lg px-2 py-2 outline-none focus-visible:ring-1 focus-visible:ring-ember/60"
-              whileHover={{ y: -5 }}
-              whileTap={{ scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 300, damping: 22 }}
-            >
-              <span
-                className="flex items-center justify-center"
-                style={{ height: OBJECT_BOX, width: OBJECT_SIZE }}
-              >
-                {open !== h.key && (
-                  <motion.span
-                    layoutId={`hobby-${h.key}`}
-                    className="block"
-                    // Back to its place quickly. Going out it is being handed
-                    // something and there is time to watch; coming back the
-                    // reading is already over.
-                    transition={{ duration: 0.34, ease: [0.4, 0, 0.2, 1] }}
-                  >
-                    <HobbyRoll
-                      color={HOBBY_COLORS[i % HOBBY_COLORS.length]}
-                      size={OBJECT_SIZE}
-                      phase={i}
-                    />
-                  </motion.span>
-                )}
-              </span>
-              {/* No caption. The name is carried only by the button's accessible
-                  label, which a screen reader needs and a visitor does not: it is
-                  written across the top of the scroll the moment it opens, and
-                  opening one is the only way anyone was ever going to read it. */}
-            </motion.button>
-          </li>
-        ))}
-      </ul>
-
-      {mounted &&
-        createPortal(
-          <AnimatePresence>
-            {openHobby && (
-              <HobbyScroll
-                key={openHobby.key}
-                hobby={openHobby}
-                color={HOBBY_COLORS[openIndex % HOBBY_COLORS.length]}
-                phase={openIndex}
-                onClose={() => setOpen(null)}
-              />
-            )}
-          </AnimatePresence>,
-          document.body
-        )}
-    </div>
-  );
+  return <Digressions />;
 }
 
 function Contact() {

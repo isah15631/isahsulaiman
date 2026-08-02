@@ -43,9 +43,56 @@ import HobbyRoll from "./HobbyRoll";
 // which puts the rod precisely on the edge of the paper at every frame of it.
 // Transform only, so it is still nothing to draw.
 
-/** Aged paper. Warm, because the only light in this room is a tungsten bulb. */
+/** Aged paper, warm, and darker toward the top: the light is under it now, so the
+ *  far edge from the flame is the dim one. */
 const PARCHMENT =
-  "linear-gradient(158deg, #f0e6d1 0%, #e6d7b8 46%, #dcc9a5 78%, #d2bd96 100%)";
+  "linear-gradient(0deg, #f3e6c2 0%, #e8d4a6 42%, #d8c290 74%, #b9a074 100%)";
+
+// The flame that burns under the page, in a 40x86 box, base at the bottom.
+const FLAME_OUTER =
+  "M20,4 C25,24 34,30 34,48 C34,64 28,74 20,74 C12,74 6,64 6,48 C6,30 15,24 20,4 Z";
+const FLAME_MID =
+  "M20,20 C23,34 30,38 30,52 C30,64 25,71 20,71 C15,71 10,64 10,52 C10,38 17,34 20,20 Z";
+const FLAME_CORE =
+  "M20,36 C22,44 26,47 26,55 C26,63 23,68 20,68 C17,68 14,63 14,55 C14,47 18,44 20,36 Z";
+
+/** The torch flame that lives under the page, licking up at its base. */
+function BaseFlame() {
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+      style={{ top: -78, zIndex: -1 }}
+      aria-hidden
+    >
+      <div className="relative" style={{ width: 74, height: 128 }}>
+        <div
+          className="torch-glow absolute left-1/2 top-4 -translate-x-1/2 rounded-full"
+          style={{
+            width: 230,
+            height: 190,
+            background:
+              "radial-gradient(circle, rgba(255,176,76,0.8), rgba(255,140,50,0.22) 44%, transparent 68%)",
+            filter: "blur(10px)",
+          }}
+        />
+        <svg
+          width="74"
+          height="128"
+          viewBox="0 0 40 86"
+          fill="none"
+          className="absolute left-1/2 -translate-x-1/2"
+          style={{ top: 6, filter: "drop-shadow(0 0 14px rgba(255,150,60,0.85))" }}
+        >
+          <g className="torch-flame">
+            <path d={FLAME_OUTER} fill="#ff6a14" opacity="0.92" />
+            <path d={FLAME_MID} fill="#ffb02a" />
+            <path d={FLAME_CORE} fill="#ffe9b0" />
+          </g>
+        </svg>
+      </div>
+    </div>
+  );
+}
 
 /** Turned wood, lit from above like everything else here. */
 const ROD =
@@ -326,6 +373,18 @@ export default function HobbyScroll({
                 background: `radial-gradient(ellipse at 50% 0%, ${color}26, transparent 62%)`,
               }}
             />
+            {/* The torch beneath the page. Its light soaks UP through the
+                translucent parchment from the bottom, brightest where the flame
+                is and guttering with it, so the page reads as paper held over a
+                candle and the ink stays dark against the light coming through. */}
+            <div
+              className="torch-glow pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(ellipse 74% 70% at 50% 106%, rgba(255,236,170,1) 0%, rgba(255,200,108,0.68) 26%, rgba(255,158,66,0.26) 54%, transparent 82%)",
+                mixBlendMode: "screen",
+              }}
+            />
             <motion.div
               className="no-scrollbar relative max-h-[56vh] overflow-y-auto px-7 py-9 sm:px-10"
               initial={{ opacity: 0 }}
@@ -369,11 +428,14 @@ export default function HobbyScroll({
             mount there is nothing measured yet. */}
         <motion.div
           key={height}
-          className="flex w-full flex-col items-center"
+          className="relative flex w-full flex-col items-center"
           initial={{ y: -height }}
           animate={{ y: open ? 0 : -height }}
           transition={UNROLL}
         >
+          {/* the flame licking up under the base of the page, once it is open */}
+          {open && <BaseFlame />}
+
           <Rod {...rodProps} />
 
           <motion.button

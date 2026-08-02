@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PerspectiveCamera } from "three";
 import { createOrbGeometry } from "@/lib/orbGeometry";
 import type { ShardLaunch } from "@/lib/shards";
@@ -28,6 +28,7 @@ import LeaderButterflies from "./LeaderButterflies";
 import Orb from "./Orb";
 import Sky from "./Sky";
 import Snowfall from "./Snowfall";
+import SnowBurst from "./SnowBurst";
 import Space from "./Space";
 
 // One shot, from a moon hanging in space to glass on concrete.
@@ -81,6 +82,26 @@ export function Clock({
   return null;
 }
 
+/**
+ * Compile every shader before the fall, not during it.
+ *
+ * The cloud deck is a stack of eleven separate fbm shaders sitting far below the
+ * moon, frustum-culled until the camera falls near them at atmosphere entry —
+ * and three.js compiles a material's GPU program the first time it is actually
+ * drawn. That put all eleven compiles in the single frame the deck came into
+ * view, which is the hitch you feel entering the air. Compiling the whole scene
+ * once at mount, while the moon is still just hanging there, moves that cost off
+ * the timeline so nothing stalls the fall. Runs once; after mount everything is
+ * already warm.
+ */
+function Warmup() {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    gl.compile(scene, camera);
+  }, [gl, scene, camera]);
+  return null;
+}
+
 export function Rig({ nowRef }: { nowRef: React.MutableRefObject<number> }) {
   const { camera, size } = useThree();
   const dist = useMemo(
@@ -121,6 +142,7 @@ function Contents({ onImpact, onShardsLaunch }: OrbSceneProps) {
   return (
     <>
       <Clock nowRef={nowRef} />
+      <Warmup />
       <Rig nowRef={nowRef} />
       <ApproachCam nowRef={nowRef} doorPos={DOOR_POS} />
       {/* No lights anywhere in here. Every material does its own shading, and
@@ -132,6 +154,7 @@ function Contents({ onImpact, onShardsLaunch }: OrbSceneProps) {
       <Snowfall nowRef={nowRef} />
       <Floor y={FLOOR_Y} struck={struck} nowRef={nowRef} />
       <Debris nowRef={nowRef} />
+      <SnowBurst nowRef={nowRef} />
       <HeroDune nowRef={nowRef} />
       <DesertDoor position={DOOR_POS} nowRef={nowRef} />
       <LeaderButterflies nowRef={nowRef} doorPos={DOOR_POS} />

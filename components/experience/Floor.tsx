@@ -225,6 +225,9 @@ const fragmentShader = /* glsl */ `
     float dustFade =
       smoothstep(0.0, 0.05, uDust) * (1.0 - smoothstep(0.35, 1.0, uDust));
     col += vec3(0.85, 0.72, 0.60) * ring * dustFade * 0.55;
+    // On snow the shock ring is not warm dust but a bright rush of blown powder,
+    // so in daylight the ring reads white-blue across the ground.
+    dayLit += vec3(0.95, 0.97, 1.0) * ring * dustFade * 0.6;
 
     // In the dark the floor is only as opaque as it is lit. In daylight the
     // ground is simply there, so the sky does not read straight through it.

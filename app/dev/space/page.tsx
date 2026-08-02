@@ -23,6 +23,7 @@ import LeaderButterflies from "@/components/experience/LeaderButterflies";
 import Orb from "@/components/experience/Orb";
 import Sky from "@/components/experience/Sky";
 import Snowfall from "@/components/experience/Snowfall";
+import SnowBurst from "@/components/experience/SnowBurst";
 import Space from "@/components/experience/Space";
 
 declare global {
@@ -134,6 +135,7 @@ export default function DevSpace() {
         <Snowfall nowRef={nowRef} />
         <Floor y={FLOOR_Y} struck={struck} nowRef={nowRef} />
         <Debris nowRef={nowRef} />
+        <SnowBurst nowRef={nowRef} />
         <DesertDoor position={DOOR_POS} nowRef={nowRef} />
         <LeaderButterflies nowRef={nowRef} doorPos={DOOR_POS} />
         <ApproachCam nowRef={nowRef} doorPos={DOOR_POS} />

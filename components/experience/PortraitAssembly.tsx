@@ -1,87 +1,71 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { FOREWING, HINDWING } from "./Butterfly";
 
 // The portrait does not load, it arrives.
 //
-// The photo is cut into a grid of tiles. Each tile flies in from off screen as
-// a STAR, and as it nears its place the star crossfades into the piece of
-// photograph it was carrying. They settle into the picture.
+// The photo is cut into a grid of tiles, and each tile flies in as a BUTTERFLY —
+// the same swarm the rest of the room is made of — and as it nears its place the
+// butterfly crossfades into the piece of photograph it was carrying. They settle
+// into the picture.
 //
-// They were butterflies, and the swarm is still what the rest of the room is
-// made of. A butterfly here was doing the wrong job: it is an object with a
-// body and a near wing and a far one, and at tile size, three dozen of them
-// crossing each other, all that detail collapses into confetti. A star is the
-// opposite kind of drawing — it has no silhouette to lose, it is a point of
-// light with a flare on it, and it survives being small because that is the
-// size it is supposed to be. The photo is being assembled out of the dark
-// above it rather than out of the garden.
+// They come in grayscale, because everything in this room waits colourless for
+// the one flame: a swarm of grey wings assembling a grey photograph, which then
+// warms into colour only when the torch's light reaches the frame (that part is
+// PortraitFrame's job, not this canvas's).
 //
-// So they twinkle instead of flapping, which is the same trick underneath: a
-// small atlas of poses per colour, rendered once and ping-ponged, so nothing
-// is ever drawn with a path at frame time. The flare breathes in and out
-// instead of a wing folding.
+// They flap rather than twinkle: a small atlas of wing poses per shade, rendered
+// once and ping-ponged, so nothing is ever drawn with a live path at frame time.
+// The wing opens and folds instead of a flare breathing.
 //
-// And they will come apart again. Touch the portrait and the whole thing
-// scatters back into the sky it was made of, holds there, and settles again
-// when you let go. That is why the assembly is driven by a clock that can run
-// in either direction rather than by elapsed time: there is one timeline, and
-// hovering just points it backwards.
+// And they will come apart again. Touch the portrait and the whole thing scatters
+// back into the swarm it was made of, holds there, and settles again when you let
+// go. That is why the assembly is driven by a clock that can run either direction
+// rather than by elapsed time: there is one timeline, and hovering just points it
+// backwards.
 //
-// Drawn on ONE canvas, for the same reason the eruption is: a few hundred
-// transformed blits per frame is cheap, a few hundred animated DOM nodes is
-// not. Reduced motion and a failed image both fall back to the plain photo.
+// Drawn on ONE canvas: a few hundred transformed blits per frame is cheap, a few
+// hundred animated DOM nodes is not. Reduced motion and a failed image both fall
+// back to the plain photo.
 
 /**
- * Starlight, which is very nearly white and never the palette.
+ * Grey wings, in a narrow spread of shades.
  *
- * These took the swarm's six colours, which was the one thing carried over from
- * the butterflies that should not have been. A crimson butterfly is a
- * butterfly; a crimson star is a bug. Real stars vary in COLOUR TEMPERATURE and
- * almost not at all in hue — hot ones run blue-white, cool ones run amber, and
- * the whole range from end to end is narrower than the gap between any two
- * entries in SWARM. So: white, two shades of blue-white, two of warm white, and
- * one properly amber for the odd old one. Weighted toward the cold end, because
- * the sky is.
- *
- * They also need somewhere dark to be. A star is not a bright colour, it is a
- * bright thing against black, and these were glowing onto whatever the page
- * happened to be — which is why the night goes on the canvas underneath them
- * (see SKY) and lifts as the photograph takes over.
+ * Not the swarm's six colours: a crimson butterfly is a butterfly, but this swarm
+ * is the grey the room is in before the fire, so they run from a dim slate to a
+ * near-white, weighted so the mass of them reads as pale movement against the
+ * dark.
  */
-const COLORS = [
-  "#ffffff",
-  "#cfe0ff",
-  "#e8f0ff",
-  "#fff2dc",
-  "#dbe6ff",
-  "#ffdda6",
+const SHADES = [
+  "#c7c7cd",
+  "#b2b2ba",
+  "#dcdce2",
+  "#a0a0aa",
+  "#cfcfd6",
+  "#909099",
 ];
 
-/** The dark they are seen against, top to bottom. */
+/** The dark they fly against, lifting as the photograph takes over. */
 const SKY: [number, string][] = [
-  [0, "#080b16"],
-  [0.55, "#05070f"],
-  [1, "#020307"],
+  [0, "#0b0b10"],
+  [0.55, "#070709"],
+  [1, "#040405"],
 ];
 
-/**
- * Roomier than the butterfly's box was, and most of it is deliberately empty.
- *
- * A star is a small hot core and a flare reaching a long way out of it, and the
- * reach is the part that reads. Crop the box to the bright bit and you have
- * drawn a dot.
- */
-const SPRITE_PX = 56;
-const TWINKLE_FRAMES = 7; // ping-ponged, so 12 distinct poses
+/** The butterfly body, along x = 50 in the 100-unit wing box. */
+const BODY =
+  "M50,28 C52,30 53,36 53,50 C53,64 51,73 50,78 C49,73 47,64 47,50 C47,36 48,30 50,28 Z";
+
+const SPRITE_PX = 60;
+const FLAP_FRAMES = 7; // ping-ponged, so 12 distinct poses
 
 const FLIGHT = 2.3; // seconds a single piece spends in the air
 const STAGGER = 1.7; // seconds between the first piece leaving and the last
 const TOTAL = STAGGER + FLIGHT;
 
-// Coming apart is faster than coming together. A swarm bursts and then takes
-// its time reassembling, and reversing at the same rate feels like rewound
-// footage.
+// Coming apart is faster than coming together. A swarm bursts and then takes its
+// time reassembling, and reversing at the same rate feels like rewound footage.
 const ASSEMBLE = 1;
 const SCATTER = 2.4;
 
@@ -94,93 +78,71 @@ function seeded(i: number, s: number) {
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-/** The palette is hex and every one of these needs an alpha on it. */
-function rgba(hex: string, a: number) {
-  const n = parseInt(hex.replace("#", ""), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-}
-
 /**
- * One star, at one point in its twinkle.
+ * One butterfly, at one point in its wingbeat.
  *
- * Three passes, and each is doing a job the others cannot:
- *
- * The HALO is what gives it colour. A star's own light is white at the centre
- * whatever colour it is — that is just what a bright thing does to a sensor, or
- * to an eye — so the colour has to live in the falloff around it, not in the
- * core. Hence white at 0 and the palette colour a few percent out.
- *
- * The SPIKES are what make it a star rather than a dot of light. Real ones are
- * an artefact of the lens, not of the object, which is exactly why they are the
- * convention: nobody has ever seen a star with points, and everybody draws them
- * that way. Four long on the axes and four short on the diagonals, added with
- * `lighter` so they brighten where they cross instead of painting over each
- * other, which is how light actually accumulates.
- *
- * The CORE goes on last and blows out to pure white, so there is one hard
- * bright point to hang all that softness on.
- *
- * `twinkle` runs 0..1 and only stretches the flare. Twinkling is not a change
- * of brightness at the source, it is the atmosphere smearing a point around,
- * and the flare growing and shrinking says that far better than a fade would.
+ * The flap is a horizontal squash of each wing hinged at the body, exactly the
+ * cheap trick the live SVG butterflies use: legible at small sizes, where a real
+ * 3D wing rotation just collapses into slivers. `flap` runs 0 (folded, edge-on)
+ * to 1 (fully open). The hindwing is carried a shade fainter than the fore, and a
+ * pool of shadow sits at the wing root so the membrane has depth rather than
+ * reading as a flat cut-out.
  */
-function makeStarSprite(color: string, px: number, twinkle: number) {
+function makeButterflySprite(shade: string, px: number, flap: number) {
   const c = document.createElement("canvas");
   c.width = px;
   c.height = px;
   const g = c.getContext("2d");
   if (!g) return c;
-  const R = px / 2;
-  g.translate(R, R);
 
-  const halo = g.createRadialGradient(0, 0, 0, 0, 0, R);
-  halo.addColorStop(0, "rgba(255,255,255,0.95)");
-  halo.addColorStop(0.07, rgba(color, 0.8));
-  halo.addColorStop(0.3, rgba(color, 0.2));
-  halo.addColorStop(1, rgba(color, 0));
-  g.fillStyle = halo;
-  g.beginPath();
-  g.arc(0, 0, R, 0, Math.PI * 2);
-  g.fill();
+  const fore = new Path2D(FOREWING);
+  const hind = new Path2D(HINDWING);
+  const body = new Path2D(BODY);
 
-  g.globalCompositeOperation = "lighter";
-  // A leaf, not a triangle: waisted at the root so the four spikes meet in a
-  // cross rather than in a square blob.
-  const spike = (len: number, half: number, alpha: number) => {
-    const grad = g.createLinearGradient(0, 0, len, 0);
-    grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
-    grad.addColorStop(0.22, rgba(color, alpha * 0.55));
-    grad.addColorStop(1, rgba(color, 0));
-    g.fillStyle = grad;
-    g.beginPath();
-    g.moveTo(0, -half);
-    g.quadraticCurveTo(len * 0.3, -half * 0.28, len, 0);
-    g.quadraticCurveTo(len * 0.3, half * 0.28, 0, half);
-    g.closePath();
-    g.fill();
+  // put the 100-unit box centred in the sprite
+  const s = px / 100;
+  g.translate(px / 2 - 50 * s, px / 2 - 50 * s);
+  g.scale(s, s);
+
+  const open = 0.28 + 0.72 * flap;
+
+  const wing = () => {
+    // shadow pooled at the root, so the wing is not a flat shade
+    const wash = g.createRadialGradient(56, 46, 4, 56, 46, 48);
+    wash.addColorStop(0, "rgba(10,10,14,0.5)");
+    wash.addColorStop(0.5, "rgba(10,10,14,0.16)");
+    wash.addColorStop(1, "rgba(10,10,14,0)");
+    g.fillStyle = shade;
+    g.fill(fore);
+    g.globalAlpha = 0.86;
+    g.fill(hind);
+    g.globalAlpha = 1;
+    g.fillStyle = wash;
+    g.fill(fore);
+    g.fill(hind);
   };
-  const long = R * (0.7 + 0.3 * twinkle);
-  for (let i = 0; i < 4; i++) {
-    g.save();
-    g.rotate((i * Math.PI) / 2);
-    spike(long, R * 0.06, 0.9);
-    g.restore();
-  }
-  for (let i = 0; i < 4; i++) {
-    g.save();
-    g.rotate(Math.PI / 4 + (i * Math.PI) / 2);
-    spike(long * 0.4, R * 0.045, 0.5);
-    g.restore();
-  }
 
-  const core = g.createRadialGradient(0, 0, 0, 0, 0, R * 0.17);
-  core.addColorStop(0, "rgba(255,255,255,1)");
-  core.addColorStop(0.5, rgba(color, 0.7));
-  core.addColorStop(1, rgba(color, 0));
-  g.fillStyle = core;
-  g.beginPath();
-  g.arc(0, 0, R * 0.17, 0, Math.PI * 2);
-  g.fill();
+  // right wings, hinged at the body
+  g.save();
+  g.translate(50, 0);
+  g.scale(open, 1);
+  g.translate(-50, 0);
+  wing();
+  g.restore();
+
+  // left wings: the same shapes mirrored about the body, then flapped
+  g.save();
+  g.translate(100, 0);
+  g.scale(-1, 1);
+  g.translate(50, 0);
+  g.scale(open, 1);
+  g.translate(-50, 0);
+  wing();
+  g.restore();
+
+  // the body
+  g.fillStyle = "rgba(18,16,18,0.92)";
+  g.fill(body);
   return c;
 }
 
@@ -200,8 +162,8 @@ type Piece = {
   w1: number;
   w2: number;
   ph: number;
-  /** seconds for one stroke of this one's twinkle */
-  twinkle: number;
+  /** seconds for one full wingbeat of this one */
+  flap: number;
 };
 
 type Props = {
@@ -287,11 +249,8 @@ export default function PortraitAssembly({
             dy,
             fromX: dx + Math.cos(angle) * dist,
             fromY: dy + Math.sin(angle) * dist,
-            // Barely any, and that is a change from the butterflies. A
-            // butterfly tumbles; a star's spikes come from the lens, so they
-            // are the one thing in the sky that does NOT turn. Enough to stop
-            // three dozen identical crosses looking stamped, and no more.
-            spin: (seeded(i, 3) - 0.5) * 0.5,
+            // A little tumble on the way, shed as it lands upright into the tile.
+            spin: (seeded(i, 3) - 0.5) * 1.1,
             // centre pieces land first, edges drift in after
             delay:
               STAGGER *
@@ -299,23 +258,22 @@ export default function PortraitAssembly({
                 0.85 *
                   (Math.hypot(dx + tileW / 2 - w / 2, dy + tileH / 2 - h / 2) /
                     (reach / 2))),
-            color: i % COLORS.length,
+            color: i % SHADES.length,
             w1: 0.7 + seeded(i, 5) * 1.1,
             w2: 0.6 + seeded(i, 6) * 1.2,
             ph: seeded(i, 7) * Math.PI * 2,
-            // Slower than a wingbeat was, and more spread out. Stars are not in
-            // a hurry and they are emphatically not in time with each other.
-            twinkle: 0.7 + seeded(i, 8) * 1.3,
+            // Wingbeats are quick and emphatically not in time with each other.
+            flap: 0.16 + seeded(i, 8) * 0.16,
           });
         }
       }
 
-      // [colour][twinkle pose], rendered once
-      const sprites = COLORS.map((c) =>
-        Array.from({ length: TWINKLE_FRAMES }, (_, f) => {
-          const k = f / (TWINKLE_FRAMES - 1);
+      // [shade][flap pose], rendered once
+      const sprites = SHADES.map((c) =>
+        Array.from({ length: FLAP_FRAMES }, (_, f) => {
+          const k = f / (FLAP_FRAMES - 1);
           const eased = 0.5 - 0.5 * Math.cos(k * Math.PI);
-          return makeStarSprite(c, Math.round(SPRITE_PX * dpr), eased);
+          return makeButterflySprite(c, Math.round(SPRITE_PX * dpr), eased);
         })
       );
 
@@ -353,22 +311,18 @@ export default function PortraitAssembly({
         else if (clock > target) clock = Math.max(target, clock - dt * SCATTER);
 
         settled = clock >= TOTAL;
-        // Only the very first assembly fades up. After that the swarm is
-        // already known to be there and fading it in again reads as a glitch.
+        // Only the very first assembly fades up. After that the swarm is already
+        // known to be there and fading it in again reads as a glitch.
         const intro = first ? clamp01(clock / 0.4) : 1;
         if (settled) first = false;
 
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, w, h);
 
-        // The night, under everything.
-        //
-        // Without it the stars were glowing onto whatever the page was behind
-        // the canvas, and a star with the room showing through it is a smear of
-        // pale colour. It holds at full strength for most of the assembly and
-        // only lifts at the end, so the sky does not start draining away while
-        // there are still stars flying through it — and by the time it is gone
-        // the photograph has covered it anyway.
+        // The dark, under everything. It holds at full strength for most of the
+        // assembly and only lifts at the end, so the ground does not start
+        // draining away while there are still wings crossing it — and by the time
+        // it is gone the photograph has covered it anyway.
         const night = 1 - clamp01((clock / TOTAL - 0.58) / 0.42);
         if (night > 0) {
           ctx.globalAlpha = night;
@@ -400,40 +354,38 @@ export default function PortraitAssembly({
             (p.dy - p.fromY) * e +
             Math.cos(age * p.w2 + p.ph * 1.7) * 8 * loose;
 
-          // in flight: star holding its light, then handing over to the photo
+          // in flight: a butterfly holding the light, handing over to the photo
           // tile only in the last quarter of the approach
           const settleT = Math.max(0, (t - 0.74) / 0.26);
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           ctx.translate(x + tileW / 2, y + tileH / 2);
+          // face the way it is travelling (head leads), shedding the heading as
+          // it lands so it settles square onto its tile
+          const heading = Math.atan2(p.dy - y, p.dx - x) + Math.PI / 2;
           ctx.rotate(
-            p.spin * loose + Math.sin(age * p.w1 * 0.6 + p.ph) * 0.1 * loose
+            heading * loose +
+              p.spin * loose * 0.4 +
+              Math.sin(age * p.w1 * 0.6 + p.ph) * 0.14 * loose
           );
 
           if (settleT < 1) {
             // JS % is a remainder, not a modulo: it keeps the sign of the
-            // dividend. One negative frame delta plus a phase near zero used
-            // to put this at -1, and sprites[colour][-1] is undefined, which
+            // dividend. One negative frame delta plus a phase near zero used to
+            // put this at -1, and sprites[shade][-1] is undefined, which
             // drawImage rejects. Wrapped into 0..2 before it is read.
-            const cycle = ((((age + p.ph) / p.twinkle) % 2) + 2) % 2;
+            const cycle = ((((age + p.ph) / p.flap) % 2) + 2) % 2;
             const fi = Math.floor(
-              (cycle < 1 ? cycle : 2 - cycle) * (TWINKLE_FRAMES - 1)
+              (cycle < 1 ? cycle : 2 - cycle) * (FLAP_FRAMES - 1)
             );
             const s = sprites[p.color][fi];
-            // Bigger than the butterfly was, because most of a star sprite is
-            // falloff: the bright part of it is a fraction of the box. It
-            // shrinks toward tile size as it lands, so the light contracts into
-            // the piece of photograph it becomes.
-            const size = Math.max(tileW, tileH) * (2.4 - 0.9 * e);
+            // A shade larger than the tile in flight, contracting toward tile
+            // size as it lands so the wing folds down into the piece of photo it
+            // becomes.
+            const size = Math.max(tileW, tileH) * (1.75 - 0.55 * e);
             ctx.globalAlpha = (1 - settleT) * intro;
-            // Added, not stacked. Two overlapping stars are two light sources
-            // and the sky between them gets brighter; painted normally the
-            // nearer one just occludes the further, which is what an opaque
-            // object does and a star is not one. Where one passes over a tile
-            // that has already landed it spills light onto it, which is also
-            // what it should do.
-            ctx.globalCompositeOperation = "lighter";
+            // Opaque objects, not light: they occlude where they cross rather
+            // than adding up like the stars did.
             ctx.drawImage(s, -size / 2, -size / 2, size, size);
-            ctx.globalCompositeOperation = "source-over";
           }
           if (settleT > 0) {
             ctx.globalAlpha = settleT * intro;

@@ -4,13 +4,25 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import Carrier from "./Carrier";
 
-// The whispered introduction. One line at a time, slow and elegant.
-// The first line is carried into view by two butterflies, who then let go.
+// The whispered introduction. One line at a time, slow and elegant. The first
+// line is carried into view by two butterflies, who then let go.
+//
+// It says almost nothing on purpose. Not what he does — the rooms do that — and
+// not even his name, which is waiting in About: putting it here spends the reveal
+// before you have seen anything. Two lines only: a greeting out of the dark, and
+// the one hook — you are reframed as someone who FOUND something, pointed at the
+// threshold about to open. The gap ("a door to what?") does the work. The last
+// line is held longer and followed by a beat of pure dark, because silence
+// withholds too.
 const LINES = [
   { text: "hello.", hold: 5150 },
-  { text: "i'm Isah Sulaiman.", hold: 3200 },
-  { text: "i build cool things.", hold: 3600 },
+  { text: "you found the door.", hold: 4200 },
 ];
+
+// A beat of pure black after the last line has faded, before the room arrives.
+// The held silence is part of the introduction, not dead air: it lets the last
+// line land and keeps the mystery open a moment longer.
+const DARK_BEAT = 1200;
 
 // It is carried up from off the bottom of the frame, not from a little way
 // down. It used to start 104px below centre, which on any real screen is
@@ -42,7 +54,7 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     if (index >= LINES.length) {
-      const t = window.setTimeout(onDone, 400);
+      const t = window.setTimeout(onDone, DARK_BEAT);
       return () => window.clearTimeout(t);
     }
     const t = window.setTimeout(() => setIndex((i) => i + 1), LINES[index].hold);

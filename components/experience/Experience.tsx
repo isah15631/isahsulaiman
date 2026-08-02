@@ -28,6 +28,10 @@ export default function Experience() {
   // Once we are through the door and the black has closed we drop the canvas
   // entirely, and the dark interior has the frame to itself.
   const [orbGone, setOrbGone] = useState(false);
+  // The whole world is colourless until the fire-winged butterfly lights the
+  // torch in the room. This is a one-way latch: once it catches, colour is back
+  // for good — there is no turning it off again.
+  const [ignited, setIgnited] = useState(false);
 
   const phaseRef = useRef<Phase>("fall");
   const timers = useRef<number[]>([]);
@@ -86,7 +90,18 @@ export default function Experience() {
   return (
     // 100dvh, not 100vh: on mobile browsers 100vh includes the address bar, so
     // vh crops the bottom of the frame and shifts as the chrome hides.
-    <main className="relative h-[100dvh] w-full overflow-hidden bg-black">
+    //
+    // The whole piece plays in grayscale — the moon, the snow, the swarm, the
+    // door, all of it — and only warms back into colour when the torch is lit.
+    // The fire-winged butterfly that lights it is portalled clear of this filter
+    // by the room, so its flame is the one colour in the grey until it spreads.
+    <main
+      className="relative h-[100dvh] w-full overflow-hidden bg-black"
+      style={{
+        filter: ignited ? "grayscale(0)" : "grayscale(1)",
+        transition: "filter 1.9s ease",
+      }}
+    >
       {/* Space, the fall, the daylit landing, the swarm out of the break and into
           the door, and the walk through it to black. All one scene and one
           camera: the only cut in the whole piece is the black at the threshold,
@@ -103,7 +118,9 @@ export default function Experience() {
       )}
 
       {/* the lit room and the four sections */}
-      {phase === "sections" && <Sections />}
+      {phase === "sections" && (
+        <Sections ignited={ignited} onIgnite={() => setIgnited(true)} />
+      )}
     </main>
   );
 }
