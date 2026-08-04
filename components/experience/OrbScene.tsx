@@ -23,6 +23,7 @@ import Debris from "./Debris";
 import DesertDoor from "./DesertDoor";
 import DuneRidges from "./DuneRidges";
 import Floor from "./Floor";
+import GrassField from "./GrassField";
 import HeroDune from "./HeroDune";
 import LeaderButterflies from "./LeaderButterflies";
 import Orb from "./Orb";
@@ -153,6 +154,7 @@ function Contents({ onImpact, onShardsLaunch }: OrbSceneProps) {
       <Sky nowRef={nowRef} />
       <Snowfall nowRef={nowRef} />
       <Floor y={FLOOR_Y} struck={struck} nowRef={nowRef} />
+      <GrassField nowRef={nowRef} />
       <Debris nowRef={nowRef} />
       <SnowBurst nowRef={nowRef} />
       <HeroDune nowRef={nowRef} />

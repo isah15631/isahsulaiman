@@ -6,16 +6,17 @@ import * as THREE from "three";
 import { FLOOR_Y, dayLight } from "@/lib/descent";
 import { DOOR_POS } from "@/lib/approach";
 
-// The drift the door stands on.
+// The rise the door stands on.
 //
 // A single smooth mound raised under the door, so it sits back on a crest rather
 // than out on the flat where the moon lands. The crest is lifted to exactly the
-// door's base, and the sheet fades out at its rim into the surrounding snow, so
-// there is no seam between the drift and the floor: one field, one white.
+// door's base, and the sheet fades out at its rim into the surrounding grass, so
+// there is no seam between the rise and the floor: one field, one green.
 //
 // Lit by the same low sun as everything else, so the slope that faces the sun is
-// bright and the slope toward the camera falls into a cold blue shadow, which is
-// what gives a drift its shape: snow out of the sun is lit by the sky, not black.
+// a warm lit green and the slope toward the camera falls into a cooler shadow,
+// which is what gives the mound its shape: grass out of the sun is lit by the
+// sky, not black.
 
 const SUN = "normalize(vec3(-0.22, 0.085, -1.0))";
 
@@ -49,17 +50,17 @@ const VERT = /* glsl */ `
 const FRAG = /* glsl */ `
   uniform float uFade;
   uniform float uWidth;
-  uniform vec3 uSnow;
+  uniform vec3 uGrass;
   varying vec3 vN;
   varying float vR;
 
   void main(){
     vec3 n = normalize(vN);
     float sun = max(dot(n, ${SUN}), 0.0);
-    // Sunlit snow over a cold sky fill, so the shaded flank goes blue not dark.
-    vec3 col = uSnow * (0.55 + 0.62 * sun)
-             + uSnow * vec3(0.30, 0.40, 0.58) * 0.34 * (1.0 - sun);
-    // melt the rim into the flat sand around it
+    // Sunlit grass over a cool sky fill, so the shaded flank stays green not dark.
+    vec3 col = uGrass * (0.5 + 0.66 * sun)
+             + uGrass * vec3(0.26, 0.40, 0.34) * 0.34 * (1.0 - sun);
+    // melt the rim into the flat grass around it
     float edge = 1.0 - smoothstep(uWidth * 1.4, uWidth * 2.5, vR);
     float a = edge * uFade;
     if (a < 0.004) discard;
@@ -73,7 +74,7 @@ export default function HeroDune({
   nowRef: MutableRefObject<number>;
 }) {
   const mat = useRef<THREE.ShaderMaterial>(null);
-  const snow = useMemo(() => new THREE.Color(0.90, 0.93, 0.99), []);
+  const grass = useMemo(() => new THREE.Color(0.24, 0.42, 0.15), []);
 
   // Crest lifted to exactly the door's base, so the door sits on top of it.
   const amp = DOOR_POS[1] - FLOOR_Y;
@@ -99,7 +100,7 @@ export default function HeroDune({
           uAmp: { value: amp },
           uWidth: { value: 4.6 },
           uFade: { value: 0 },
-          uSnow: { value: snow },
+          uGrass: { value: grass },
         }}
       />
     </mesh>

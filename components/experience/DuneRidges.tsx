@@ -5,16 +5,15 @@ import { useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { dayLight } from "@/lib/descent";
 
-// The mountains behind the door: snow-clad ridges receding to the horizon, so
+// The hills behind the door: rolling green ridges receding to the horizon, so
 // the vista has the layered depth the reference does rather than one flat ground
-// meeting the sky.
+// meeting the sky, while still reading as open grassland rather than mountains.
 //
-// Each ridge is a single standing sheet with its crest cut in the shader: the
-// top edge is a jagged alpine profile and everything above it is discarded to
-// sky. Below the line the face is snow, bright toward the lit crest and cold
-// blue in the shadow at the foot, with dark rock breaking through on the steep
-// upper faces where the snow cannot hold. The nearer ones are crisp and dark,
-// the farther ones washed toward the cold sky by the haze, which is all
+// Each hill is a single standing sheet with its crest cut in the shader: the top
+// edge is a soft rolling profile and everything above it is discarded to sky.
+// Below the line the face is grass, a warm lit green toward the crest and a cool
+// deep green in the shadow at the foot. The nearer ones are crisp and saturated,
+// the farther ones washed toward the pale sky by the haze, which is all
 // atmospheric perspective is. They belong to the daylit world, so they come up
 // with the dawn and stay in frame until the black of the doorway closes over.
 
@@ -44,50 +43,44 @@ const FRAG = /* glsl */ `
                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
   }
 
-  // A ridged fold: sharp peaks and rounded valleys, which is the silhouette of a
-  // mountain rather than the round swell of a dune.
-  float ridged(float x){ return 1.0 - abs(sin(x)); }
+  // A rounded swell: smooth crests and broad valleys, the silhouette of a rolling
+  // grass hill rather than the sharp saw-tooth of a mountain.
+  float roll(float x){ return 0.5 + 0.5 * sin(x); }
 
-  // The crest line: a few ridged octaves at rising rates, so several sharp peaks
-  // and saddles cross the width without repeating. The frequencies are high on
-  // purpose: uv.x runs 0..1 across the whole sheet, so a rate of one barely bends
-  // it, and it takes tens of cycles to make a skyline of peaks rather than a
-  // single swell. Returns the summit height as a fraction of the sheet.
+  // The crest line: a few rounded octaves at rising rates, so several soft mounds
+  // and saddles cross the width without repeating. The frequencies are lower than
+  // a mountain skyline would take, so what crosses is a gentle roll rather than a
+  // range of peaks. Returns the summit height as a fraction of the sheet.
   float crest(float x){
     float s = uSeed;
-    return 0.40
-      + 0.20 * ridged(x * 8.0 + s)
-      + 0.10 * ridged(x * 19.0 + s * 1.7)
-      + 0.05 * ridged(x * 43.0 + s * 2.9);
+    return 0.32
+      + 0.15 * roll(x * 3.0 + s)
+      + 0.08 * roll(x * 7.0 + s * 1.7)
+      + 0.04 * roll(x * 15.0 + s * 2.9);
   }
 
   void main(){
     float c = crest(vUv.x);
-    if (vUv.y > c) discard; // sky above the ridge
+    if (vUv.y > c) discard; // sky above the hill
     float t = vUv.y / c;    // 0 at the foot, 1 at the crest
 
-    // Snow: cold blue in the shadowed foot, climbing to a bright lit crest, with
-    // a hard white line right along the ridge where the sun rakes the summit.
-    vec3 snowShad = vec3(0.55, 0.64, 0.82);
-    vec3 snowLit  = vec3(0.93, 0.96, 1.00);
-    vec3 snow = mix(snowShad, snowLit, smoothstep(0.0, 1.0, t));
-    float rim = smoothstep(0.88, 1.0, t);
-    snow = mix(snow, vec3(1.0), rim * 0.6);
+    // Grass: a cool deep green in the shadowed foot, climbing to a warm lit crest,
+    // with a soft brighter line right along the ridge where the low sun rakes it.
+    vec3 grassShad = vec3(0.14, 0.24, 0.12);
+    vec3 grassLit  = vec3(0.42, 0.58, 0.24);
+    vec3 grass = mix(grassShad, grassLit, smoothstep(0.0, 1.0, t));
+    float rim = smoothstep(0.86, 1.0, t);
+    grass = mix(grass, vec3(0.60, 0.72, 0.34), rim * 0.5);
 
-    // Rock breaking through the snow. A torn noise field, revealed on the steep
-    // upper faces and pulled back under the very crest and down at the foot, so
-    // the dark exposed stone sits in a band below the summit the way it does on a
-    // real peak. Its own cold shading, lighter toward the light.
-    float rockField = vnoise(vec2(vUv.x * 8.0 + uSeed, t * 4.5)) * 0.7
-                    + vnoise(vec2(vUv.x * 21.0 + uSeed * 3.1, t * 11.0)) * 0.3;
-    float band = smoothstep(0.24, 0.48, t) * (1.0 - smoothstep(0.90, 1.0, t));
-    float rock = smoothstep(0.42, 0.58, rockField) * band;
-    // Exposed stone: a mid grey rock, dark enough to read as bare stone against
-    // the snow but not the near-black it was, so the peaks do not look scorched.
-    vec3 rockCol = mix(vec3(0.15, 0.15, 0.18), vec3(0.36, 0.35, 0.38), t);
-    vec3 col = mix(snow, rockCol, rock);
+    // A soft mottle of texture across the hillside, so the face is not a flat wash
+    // of one green: broad patches of lighter and darker sward, faded under the
+    // crest so the lit rim stays clean.
+    float mottle = vnoise(vec2(vUv.x * 9.0 + uSeed, t * 4.0)) * 0.7
+                 + vnoise(vec2(vUv.x * 24.0 + uSeed * 3.1, t * 10.0)) * 0.3;
+    float band = smoothstep(0.10, 0.55, t) * (1.0 - smoothstep(0.88, 1.0, t));
+    vec3 col = grass * (1.0 + (mottle - 0.5) * 0.28 * band);
 
-    // the farther the ridge, the more the air washes it toward the sky
+    // the farther the hill, the more the air washes it toward the sky
     col = mix(col, uSky, uHaze);
     gl_FragColor = vec4(col, uFade);
   }
@@ -102,11 +95,11 @@ type Ridge = {
   haze: number;
 };
 
-// Nearest first. A whole range, set back behind the door and climbing to giants
-// that haze out into the cold sky. The far ridges are deliberately huge and far:
-// a distant peak that is genuinely enormous and genuinely far away is the entire
+// Nearest first. A whole run of hills, set back behind the door and receding to
+// far swells that haze out into the pale sky. The far ones are deliberately large
+// and distant: a swell that is genuinely big and genuinely far away is the whole
 // trick of scale, because the eye reads the haze as distance and the height as
-// size, and the door standing small in front of it inherits how big the world is.
+// size, and the door standing small in front of it inherits how wide the world is.
 const RIDGES: Ridge[] = [
   { z: -18, y: -0.6, w: 66, h: 18, seed: 0.7, haze: 0.12 },
   { z: -28, y: 0.4, w: 100, h: 27, seed: 2.9, haze: 0.28 },
@@ -122,9 +115,9 @@ export default function DuneRidges({
 }) {
   const mats = useRef<(THREE.ShaderMaterial | null)[]>([]);
 
-  // The pale cold sky the far ridges dissolve into, matching the winter horizon
-  // in DaySky, so the mountains recede into the same air the sky is made of.
-  const sky = useMemo(() => new THREE.Color(0.80, 0.85, 0.92), []);
+  // The pale sky the far hills dissolve into, matching the horizon in DaySky, so
+  // the hills recede into the same air the sky is made of.
+  const sky = useMemo(() => new THREE.Color(0.72, 0.82, 0.92), []);
 
   useFrame(() => {
     const now = nowRef.current;

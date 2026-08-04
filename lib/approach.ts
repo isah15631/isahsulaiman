@@ -40,9 +40,6 @@ export const THROUGH = {
   end: APPROACH.end + 1.3,
 };
 
-/** When the leaf swings, part way in so it is wide before the swarm arrives. */
-export const DOOR_OPENS = APPROACH.start + (APPROACH.end - APPROACH.start) * 0.26;
-
 /**
  * The swarm's flight. It leaves the crater a beat AFTER the sphere breaks, once
  * the rock has landed and its debris has scattered across the snow, so the order
@@ -50,11 +47,31 @@ export const DOOR_OPENS = APPROACH.start + (APPROACH.end - APPROACH.start) * 0.2
  * butterflies and pour into the door. Gathered into the door by the time the
  * camera arrives, so the butterflies that come out of the moon are the same ones
  * that go into the door.
+ *
+ * Declared before FORM, which is built from it: as consts they are in the
+ * temporal dead zone until their own line, so FORM reading LEAD above this point
+ * throws on load and the whole scene fails to mount.
  */
 export const LEAD = {
   start: BEAT.impact + 0.9,
   end: APPROACH.end - 0.3,
 };
+
+/**
+ * When the mirror appears out on the field.
+ *
+ * There is no portal during the fall or the crash; it fades into being AFTER the
+ * landing, as the camera pulls back onto the vista, so it is already standing
+ * there by the time the swarm streams out to it. It is not made by the butterflies
+ * and they do not become it: they simply fly into a mirror that is already there.
+ */
+export const FORM = {
+  start: REVEAL.start,
+  end: APPROACH.start,
+};
+
+/** When the leaf swings, part way in so it is wide before the swarm arrives. */
+export const DOOR_OPENS = APPROACH.start + (APPROACH.end - APPROACH.start) * 0.26;
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 /** Smoothstep: eased 0 to 1, flat at both ends so no move starts or stops hard. */
@@ -105,6 +122,11 @@ export function throughCamQ(now: number) {
 /** 0 leaving the crater, 1 gathered into the door. Eased. */
 export function leadP(now: number) {
   return ease((now - LEAD.start) / (LEAD.end - LEAD.start));
+}
+
+/** 0 no portal, 1 the swarm fully knit into the portal. Eased. */
+export function formP(now: number) {
+  return ease((now - FORM.start) / (FORM.end - FORM.start));
 }
 
 /** Whether the leaf should be open by now. */

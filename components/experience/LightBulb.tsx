@@ -196,9 +196,6 @@ export default function LightBulb({ on, onToggle }: Props) {
                 clipPath: "polygon(47.6% 0%, 52.4% 0%, 100% 100%, 0% 100%)",
                 background:
                   "linear-gradient(to bottom, rgba(255,196,120,0.22) 0%, rgba(255,176,96,0.10) 34%, rgba(255,160,80,0.035) 62%, rgba(255,150,70,0) 88%)",
-                // generous blur — a crisp-edged wedge reads as a painted triangle
-                // rather than as light falling through air
-                filter: "blur(16px)",
                 transformOrigin: "50% 0%",
               }}
               initial={false}
@@ -221,7 +218,6 @@ export default function LightBulb({ on, onToggle }: Props) {
               style={{
                 background:
                   "radial-gradient(ellipse at center, rgba(255,170,90,0.16), rgba(255,150,70,0.05) 45%, transparent 72%)",
-                filter: "blur(18px)",
               }}
               initial={false}
               animate={{ opacity: on ? 1 : 0 }}

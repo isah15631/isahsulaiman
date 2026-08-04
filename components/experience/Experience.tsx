@@ -98,7 +98,10 @@ export default function Experience() {
     <main
       className="relative h-[100dvh] w-full overflow-hidden bg-black"
       style={{
-        filter: ignited ? "grayscale(0)" : "grayscale(1)",
+        // TEMP: grayscale disabled so the grassy world and water portal can be
+        // seen in colour while iterating. Restore `ignited ? ... : "grayscale(1)"`
+        // to bring back the greyed intro that warms up when the torch is lit.
+        filter: "grayscale(0)",
         transition: "filter 1.9s ease",
       }}
     >

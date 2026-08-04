@@ -8,11 +8,9 @@ import {
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ABOUT, PROJECTS, CONTACT, STACK } from "@/lib/content";
-import AboutEntry from "./AboutEntry";
 import BrickWall from "./BrickWall";
-import Carrier from "./Carrier";
 import Companion from "./Companion";
-import Digressions from "./Digressions";
+import Digressions, { ParchmentColumn, type Sheet } from "./Digressions";
 import FireButterfly from "./FireButterfly";
 import PortraitFrame from "./PortraitFrame";
 import RoomButterflies from "./RoomButterflies";
@@ -89,14 +87,6 @@ const room: Variants = {
 /** Each pane owns its own scrolling, so neither can disturb the other's. */
 const PANE = "absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar";
 
-// Carrying the address in. Shorter than the welcome's lift: you have already
-// seen this done once, and the second time it should be a nod rather than a
-// performance. It waits for the fall to land before starting.
-const MAIL_DELAY = 0.55;
-const MAIL_LIFT = 2.2;
-const MAIL_RELEASE = MAIL_DELAY + MAIL_LIFT + 0.5;
-const MAIL_TOTAL = MAIL_RELEASE + 1.6;
-
 export default function Sections({
   ignited,
   onIgnite,
@@ -105,10 +95,9 @@ export default function Sections({
   onIgnite: () => void;
 }) {
   const [selected, setSelected] = useState<SectionKey | null>(null);
-  // About is no longer a fall. Clicking it plays the passage-in sequence, which
-  // owns the whole frame (its own floating torch, its own wall) until you come
-  // back out to the menu.
-  const [aboutEntry, setAboutEntry] = useState(false);
+  // Every section reads the same way now — a column of open parchments in the
+  // pane, lit by the room's one torch. There are no passage cinematics that take
+  // over the frame any more, so the wall and the torch simply stay put.
   // The room is lit once the torch has caught, and it never goes out again:
   // there is no switch any more. `lit` simply follows the world's one-way latch.
   const lit = ignited;
@@ -141,10 +130,6 @@ export default function Sections({
     "drop-shadow(0px 9px 5px rgba(0,0,0,0.55))";
 
   const open = (key: SectionKey) => {
-    if (key === "about") {
-      setAboutEntry(true);
-      return;
-    }
     setDown(true);
     setSelected(key);
   };
@@ -158,18 +143,14 @@ export default function Sections({
     // is falling past the other they would otherwise share a scrollbar and
     // fight over its height.
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#070504] text-neutral-200">
-      {/* the wall the torch is strapped to, at the very back of the room. While
-          the About passage is playing it owns the wall (it splits its own copy
-          of it down the middle), so this one steps aside to avoid two walls. */}
-      {!aboutEntry && <BrickWall />}
+      {/* the wall the torch is strapped to, at the very back of the room. */}
+      <BrickWall />
 
       {/* The torch is a fixture of the room, not of the menu. It is mounted here,
           at the room root and outside the panes that slide, so it stays nailed to
           exactly the same spot on the wall whether you are at the menu or dropped
-          into a section. Every page is lit by this one flame. While the About
-          passage is playing it brings its own floating torch, so this fixture
-          stands down to avoid two flames in the same spot. */}
-      {!aboutEntry && <Torch lit={lit} />}
+          into a section. Every page is lit by this one flame. */}
+      <Torch lit={lit} />
 
       {/* warm vignette so sections feel like the world the butterflies made */}
       <motion.div
@@ -240,15 +221,9 @@ export default function Sections({
                   would outrank the hover:text-ember class and kill the hover. */}
               <motion.nav
                 className="relative z-10 mt-[26vh] flex flex-col items-center gap-6"
-                aria-hidden={!lit || aboutEntry}
+                aria-hidden={!lit}
                 // the torchlight catching the letterforms
-                style={{ filter: LIT, pointerEvents: aboutEntry ? "none" : undefined }}
-                // Once About is clicked the words clear out of the way: the room
-                // is becoming the passage in, and the menu has no place in it.
-                // They come back when you return.
-                initial={false}
-                animate={{ opacity: aboutEntry ? 0 : 1 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
+                style={{ filter: LIT }}
               >
                 {MENU.map((m, i) => (
                   <motion.button
@@ -333,174 +308,135 @@ export default function Sections({
         )}
       </AnimatePresence>
 
-      {/* The About passage, over everything, when it is open. */}
-      {aboutEntry && (
-        <AboutEntry lit={lit} onBack={() => setAboutEntry(false)} />
-      )}
     </div>
   );
 }
 
-function Heading({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="mb-10 font-serif text-4xl font-light tracking-wide text-neutral-100 md:text-5xl">
-      {children}
-    </h2>
-  );
-}
-
+// About reads like the rest now: one open parchment lit by the torch, the
+// portrait at its head. The photo still warms out of grey into full colour as the
+// flame's pool reaches it — that living-portrait behaviour lives in PortraitFrame,
+// and it reads the same flame the parchment does, so the face colours in exactly
+// as the page around it lights.
 function About() {
-  return (
-    <div>
-      <Heading>About</Heading>
-      <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
-        {/* The portrait is a framed picture hanging on the wall of the room: it
-            waits in grayscale and warms into colour as the torch's light reaches
-            it, and it is assembled out of a grayscale swarm rather than loaded.
-            All of that lives in PortraitFrame. */}
-        <PortraitFrame src={ABOUT.photo} alt={ABOUT.name} />
-        <div className="font-sans text-[15px] leading-relaxed text-neutral-300">
-          <p className="mb-1 font-serif text-2xl text-neutral-100">{ABOUT.name}</p>
-          <p className="mb-6 text-sm uppercase tracking-widest text-ember/80">
-            {ABOUT.role}
-          </p>
-          <p className="mb-8">{ABOUT.bio}</p>
-
-          {/* expertise: label above its list, so a long group name like
-              "Practices & Tools" cannot squeeze the items into a narrow column */}
-          <div className="mb-8 flex flex-col gap-4">
-            {STACK.map((g) => (
-              <div key={g.group}>
-                <p className="mb-1 font-sans text-[11px] uppercase tracking-[0.18em] text-neutral-600">
-                  {g.group}
-                </p>
-                <p className="font-sans text-[13px] leading-relaxed text-neutral-400">
-                  {g.items.join(" · ")}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm tracking-wide">
-            {ABOUT.socials.map((s) => {
-              const external = s.href.startsWith("http");
-              return (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  {...(external
-                    ? { target: "_blank", rel: "noreferrer noopener" }
-                    : {})}
-                  className="text-neutral-400 transition-colors hover:text-ember"
-                >
-                  {s.label}
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const sheets: Sheet[] = [{ key: "about", content: <AboutPage /> }];
+  return <ParchmentColumn sheets={sheets} />;
 }
 
-// A project assembles as you reach it, one part at a time: the thread first,
-// then the tag it carries, then the title, then the words. The thread is the
-// same idea as the one the butterflies held "hello." by, laid on its side and
-// used as a lead-in rule.
-//
-// The scroll container is `fixed inset-0`, so its bounds are exactly the
-// viewport and a plain IntersectionObserver sees these correctly. No custom
-// root needed.
-const article: Variants = {
-  hidden: {},
-  shown: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
-};
-
-const rises: Variants = {
-  hidden: { opacity: 0, y: 14 },
-  shown: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
-};
-
-const draws: Variants = {
-  hidden: { scaleX: 0 },
-  shown: { scaleX: 1, transition: { duration: 0.7, ease: "easeOut" } },
-};
-
-function Projects() {
+function AboutPage() {
   return (
-    <div>
-      <Heading>Projects</Heading>
-      <div className="flex flex-col gap-14">
-        {PROJECTS.map((p) => (
-          <motion.article
-            key={p.title}
-            variants={article}
-            initial="hidden"
-            whileInView="shown"
-            viewport={{ once: true, amount: 0.25 }}
-          >
-            <div className="mb-2 flex items-center gap-3">
-              <motion.span
-                variants={draws}
-                className="block h-px w-7 origin-left bg-ember/60"
-              />
-              <motion.p
-                variants={rises}
-                className="font-sans text-[11px] uppercase tracking-[0.2em] text-ember/70"
-              >
-                {p.tag}
-                {p.year && <span className="text-neutral-600"> · {p.year}</span>}
-              </motion.p>
-            </div>
-            <motion.h3
-              variants={rises}
-              className="mb-3 font-serif text-2xl text-neutral-100"
-            >
-              {p.title}
-            </motion.h3>
-            <motion.p
-              variants={rises}
-              className="mb-4 max-w-2xl font-sans text-[15px] leading-relaxed text-neutral-300"
-            >
-              {p.story}
-            </motion.p>
-            {p.notes && (
-              <motion.p
-                variants={rises}
-                className="mb-4 max-w-2xl font-sans text-sm leading-relaxed text-neutral-500"
-              >
-                {p.notes}
-              </motion.p>
-            )}
-            <motion.div
-              variants={rises}
-              className="flex flex-wrap items-center gap-2"
-            >
-              {/* stack is only listed where it is actually known */}
-              {p.stack?.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full border border-neutral-800 px-3 py-1 font-sans text-xs tracking-wide text-neutral-400"
-                >
-                  {t}
-                </span>
-              ))}
-              {/* and a link only where one really exists */}
-              {p.href && (
-                <a
-                  href={p.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="ml-2 font-sans text-xs tracking-widest text-ember transition-opacity hover:opacity-70"
-                >
-                  visit →
-                </a>
-              )}
-            </motion.div>
-          </motion.article>
+    <>
+      {/* the portrait, centred at the head of the page; grey until the torch's
+          pool reaches it, then colour */}
+      <div className="mb-8 flex justify-center">
+        <PortraitFrame src={ABOUT.photo} alt={ABOUT.name} />
+      </div>
+
+      <h3 className="font-serif text-3xl font-light tracking-wide text-[#2a2017]">
+        {ABOUT.name}
+      </h3>
+      <p className="mt-1 font-sans text-[11px] uppercase tracking-[0.2em] text-[#9a5a2a]">
+        {ABOUT.role}
+      </p>
+      <p className="mt-5 max-w-prose font-serif text-[15px] leading-relaxed text-[#463724]">
+        {ABOUT.bio}
+      </p>
+
+      {/* expertise: label above its list, so a long group name cannot squeeze
+          the items into a narrow column */}
+      <div className="mt-8 flex flex-col gap-4">
+        {STACK.map((g) => (
+          <div key={g.group}>
+            <p className="mb-1 font-sans text-[10px] uppercase tracking-[0.24em] text-[#8a7248]">
+              {g.group}
+            </p>
+            <p className="font-sans text-[13px] leading-relaxed text-[#5b4a33]">
+              {g.items.join(" · ")}
+            </p>
+          </div>
         ))}
       </div>
-    </div>
+
+      <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-sans text-sm tracking-wide">
+        {ABOUT.socials.map((s) => {
+          const external = s.href.startsWith("http");
+          return (
+            <a
+              key={s.label}
+              href={s.href}
+              {...(external
+                ? { target: "_blank", rel: "noreferrer noopener" }
+                : {})}
+              className="text-[#5b4a33] transition-colors hover:text-[#8a3f16]"
+            >
+              {s.label}
+            </a>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// Projects reads exactly like Digressions now: a column of already-open
+// parchments hanging down the wall, each build on its own sheet, and only the one
+// scrolled under the torch is lit enough to read. No <Heading> and no reveal
+// motion — the flame arriving on the page is the reveal, same as the hobbies.
+function Projects() {
+  const sheets: Sheet[] = PROJECTS.map((p) => ({
+    key: p.title,
+    content: <ProjectPage project={p} />,
+  }));
+  return <ParchmentColumn sheets={sheets} />;
+}
+
+function ProjectPage({ project: p }: { project: (typeof PROJECTS)[number] }) {
+  return (
+    <>
+      {/* the tag it carries, on a lead-in rule, in ink rather than ember now
+          that it lives on lit paper */}
+      <div className="mb-3 flex items-center gap-3">
+        <span className="block h-px w-7 bg-[#9a5a2a]/70" />
+        <p className="font-sans text-[10px] uppercase tracking-[0.24em] text-[#8a7248]">
+          {p.tag}
+          {p.year && <span className="text-[#a98d5e]"> · {p.year}</span>}
+        </p>
+      </div>
+      <h3 className="font-serif text-3xl font-light tracking-wide text-[#2a2017]">
+        {p.title}
+      </h3>
+      <p className="mt-3 max-w-prose font-serif text-[15px] leading-relaxed text-[#463724]">
+        {p.story}
+      </p>
+      {p.notes && (
+        <p className="mt-3 max-w-prose font-serif text-[14px] italic leading-relaxed text-[#6f5c3e]">
+          {p.notes}
+        </p>
+      )}
+      {(p.stack?.length || p.href) && (
+        <div className="mt-7 flex flex-wrap items-center gap-2">
+          {/* stack is only listed where it is actually known */}
+          {p.stack?.map((t) => (
+            <span
+              key={t}
+              className="rounded-full border border-[#2a2017]/25 px-3 py-1 font-sans text-xs tracking-wide text-[#5b4a33]"
+            >
+              {t}
+            </span>
+          ))}
+          {/* and a link only where one really exists */}
+          {p.href && (
+            <a
+              href={p.href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="ml-2 font-sans text-xs tracking-widest text-[#8a3f16] transition-opacity hover:opacity-70"
+            >
+              visit →
+            </a>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -514,6 +450,10 @@ function Hobbies() {
   return <Digressions />;
 }
 
+// Contact reads like the rest now: one open parchment lit by the torch, the
+// address inked on it. The carrier butterflies that used to hand the address in
+// are gone here — on a masked, ragged sheet they would be clipped at the paper's
+// edge mid-flight — so the address simply lives on the page under the flame.
 function Contact() {
   const [copied, setCopied] = useState(false);
 
@@ -528,104 +468,65 @@ function Contact() {
     }
   };
 
-  return (
-    <div>
-      <Heading>Contact</Heading>
-      <p className="mb-12 max-w-xl font-sans text-[15px] leading-relaxed text-neutral-300">
+  const content = (
+    <>
+      <p className="max-w-prose font-serif text-[15px] leading-relaxed text-[#463724]">
         {CONTACT.invitation}
       </p>
 
-      {/* No form: the address itself is the invitation.
-
-          And it is brought to you, by the same two butterflies on the same
-          threads that carried "hello." in at the start. The piece opens with
-          them handing you a word and closes with them handing you the way to
-          reach him. Same component, different timing. */}
-      <motion.div
-        className="relative inline-block font-serif text-2xl font-light sm:text-4xl"
-        initial={{ opacity: 0, y: 44 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: MAIL_LIFT, delay: MAIL_DELAY, ease: "easeOut" }}
-      >
+      {/* No form: the address itself is the invitation. */}
+      <div className="mt-10 inline-block font-serif text-2xl font-light sm:text-3xl">
         <a
           href={`mailto:${CONTACT.email}`}
-          className="group block tracking-wide text-neutral-100 transition-colors duration-500 hover:text-ember"
+          className="group block tracking-wide text-[#2a2017] transition-colors duration-500 hover:text-[#8a3f16]"
         >
           {CONTACT.email}
-          {/* The rule stays; an ember one is drawn along it from the left on
-              hover. It used to carry `origin-left scale-x-100`, which is a
-              no-op, so the draw that was clearly intended never happened and
-              only the colour change survived. */}
-          <span className="relative mt-2 block h-px w-full bg-neutral-700">
-            <span className="absolute inset-0 origin-left scale-x-0 bg-ember transition-transform duration-500 ease-out group-hover:scale-x-100" />
+          {/* The rule stays; a warm one is drawn along it from the left on hover. */}
+          <span className="relative mt-2 block h-px w-full bg-[#2a2017]/25">
+            <span className="absolute inset-0 origin-left scale-x-0 bg-[#8a3f16] transition-transform duration-500 ease-out group-hover:scale-x-100" />
           </span>
         </a>
-
-        <Carrier
-          side="left"
-          insetEm={0.34}
-          color="#f2b544"
-          size={18}
-          flap={0.27}
-          tilt={-12}
-          threadEm={0.7}
-          away={{ x: -120, y: -96 }}
-          liftDelay={MAIL_DELAY}
-          releaseAt={MAIL_RELEASE}
-          total={MAIL_TOTAL}
-        />
-        <Carrier
-          side="right"
-          insetEm={0.4}
-          color="#f7f3ea"
-          size={16}
-          flap={0.32}
-          tilt={12}
-          threadEm={0.9}
-          away={{ x: 128, y: -110 }}
-          liftDelay={MAIL_DELAY}
-          releaseAt={MAIL_RELEASE}
-          total={MAIL_TOTAL}
-        />
-      </motion.div>
+      </div>
 
       <div className="mt-4 h-5">
         <button
           onClick={copy}
-          className="font-sans text-xs tracking-widest text-neutral-500 transition-colors hover:text-ember"
+          className="font-sans text-xs tracking-widest text-[#8a7248] transition-colors hover:text-[#8a3f16]"
         >
           {copied ? "copied." : "copy address"}
         </button>
       </div>
 
       {/* The number, under the address rather than beside it. It is the second
-          way in, not a rival to the first: same serif, a size down, and no
-          butterflies. */}
+          way in, not a rival to the first: same serif, a size down. */}
       <p className="mt-8 font-serif text-lg font-light tracking-wide sm:text-xl">
         <a
           href={CONTACT.phoneHref}
-          className="group inline-block text-neutral-300 transition-colors duration-500 hover:text-ember"
+          className="group inline-block text-[#463724] transition-colors duration-500 hover:text-[#8a3f16]"
         >
           {CONTACT.phone}
-          <span className="relative mt-2 block h-px w-full bg-neutral-800">
-            <span className="absolute inset-0 origin-left scale-x-0 bg-ember transition-transform duration-500 ease-out group-hover:scale-x-100" />
+          <span className="relative mt-2 block h-px w-full bg-[#2a2017]/20">
+            <span className="absolute inset-0 origin-left scale-x-0 bg-[#8a3f16] transition-transform duration-500 ease-out group-hover:scale-x-100" />
           </span>
         </a>
       </p>
 
-      <div className="mt-16 flex flex-wrap gap-x-8 gap-y-3 font-sans text-sm">
+      <div className="mt-14 flex flex-wrap gap-x-8 gap-y-3 font-sans text-sm">
         {CONTACT.socials.map((s) => (
           <a
             key={s.label}
             href={s.href}
             target="_blank"
             rel="noreferrer noopener"
-            className="text-neutral-400 transition-colors hover:text-ember"
+            className="text-[#5b4a33] transition-colors hover:text-[#8a3f16]"
           >
             {s.label}
           </a>
         ))}
       </div>
-    </div>
+    </>
   );
+
+  const sheets: Sheet[] = [{ key: "contact", content }];
+  return <ParchmentColumn sheets={sheets} />;
 }

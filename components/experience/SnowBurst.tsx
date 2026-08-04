@@ -5,13 +5,13 @@ import { useMemo, useRef, useEffect, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { BEAT, FLOOR_Y } from "@/lib/descent";
 
-// The powder the moon throws up when it hits the snow.
+// The earth the moon throws up when it slams into the ground.
 //
 // A one-shot burst flung up and out from the impact on the frame it lands: fine
-// crystals and billowing puffs together, arcing under gravity, falling back and
-// settling onto the snow, gone inside a couple of seconds. It is the whole of
-// what says the ground was SNOW rather than concrete, and it lands on the beat
-// the rock does.
+// grit and billowing clods of turf together, arcing under gravity, falling back
+// and settling onto the grass, gone inside a couple of seconds. It is the whole
+// of what says the ground was EARTH rather than concrete, and it lands on the
+// beat the rock does.
 //
 // Purely a function of (now - impact) in the vertex shader, so there is nothing
 // to step and the harness can seek to any instant of the blast and hold it still.
@@ -52,11 +52,12 @@ const VERT = /* glsl */ `
 const FRAG = /* glsl */ `
   varying float vFade;
   void main(){
-    // A soft round puff out of the square point sprite.
+    // A soft round clod out of the square point sprite.
     float r = length(gl_PointCoord - 0.5);
-    float a = smoothstep(0.5, 0.04, r) * vFade * 0.62;
+    float a = smoothstep(0.5, 0.04, r) * vFade * 0.7;
     if (a < 0.01) discard;
-    gl_FragColor = vec4(0.96, 0.98, 1.0, a);
+    // Torn earth and turf: a warm brown with a touch of green, not white powder.
+    gl_FragColor = vec4(0.40, 0.32, 0.18, a);
   }
 `;
 

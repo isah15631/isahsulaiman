@@ -8,8 +8,11 @@ import { FLOOR_Y } from "@/lib/descent";
 import { leadP, throughQ } from "@/lib/approach";
 import { FOREWING, HINDWING } from "./Butterfly";
 
-// The handful of the swarm that go to the door and wait, so the camera has
-// something to follow there.
+// The swarm that flies off to the distant point and into the mirror.
+//
+// The mirror is already standing there by the time they arrive; they do not make
+// it. They pour off to the far spot and stream into the glass, winking out at its
+// surface, so the camera has the swarm to follow and then something to go through.
 //
 // They are the same butterflies as everywhere else, but here they live in the 3D
 // scene rather than as sprites over it, because the shot itself is moving: a DOM
@@ -77,11 +80,10 @@ function useWingTexture() {
 // rather than a chosen few, generated with a fixed seed so the flight is the
 // same every load.
 //
-// They leave the crater spread out and all funnel to the one opening, each on
-// its own slightly different line and its own slightly different clock, so they
-// arrive as a stream rather than a block. And they end INSIDE the doorway and
-// wink out there: the butterflies go into the door, they do not disperse over
-// the sand.
+// They leave the crater spread out and all funnel to the one point, each on its
+// own slightly different line and its own slightly different clock, so they arrive
+// as a stream rather than a block. And they end AT the mirror and wink out there:
+// the butterflies fly into the glass, they do not disperse over the grass.
 const COUNT = 42;
 
 type Flyer = {
@@ -217,8 +219,8 @@ export default function LeaderButterflies({
       const beat = 0.58 + 0.42 * (0.5 + 0.5 * Math.sin(t * f.flap + f.phase));
       m.scale.set(f.size * beat, f.size, 1);
 
-      // appear leaving the crater, wink out AS it reaches the opening: the
-      // butterflies go into the door rather than fading over the sand
+      // appear leaving the crater, wink out AS it reaches the mirror: the
+      // butterflies fly into the glass rather than fading over the grass
       const op =
         Math.min(1, ep / 0.12) * (1 - Math.max(0, (ep - 0.86) / 0.14)) * gone;
       const mat = m.material as THREE.MeshBasicMaterial;

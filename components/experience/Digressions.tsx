@@ -1,27 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { HOBBIES, type Hobby } from "@/lib/content";
 
-// Digressions, as a column of open parchments hanging in the dark.
+// A column of open parchments hanging in the dark, lit only by the one fixed
+// torch — the shared body behind both Digressions and Projects.
 //
-// There are no winged scrolls to pick from any more. Every page is already open
-// and they are simply lined up down the wall, and all but one of them is dark —
-// because the only light in the room is the one torch fixed to the brick, and it
-// sits BEHIND the parchments and throws its light DOWN onto the page below it.
-// A page is dark until you have scrolled it under the flame; then the torch's
-// pool falls on it and, in the band the light reaches, it can be read. Scroll on
-// and the pool slides down onto the next page and this one falls back into dark.
+// There are no winged scrolls to pick from. Every page is already open and they
+// are simply lined up down the wall, and all but one of them is dark — because
+// the only light in the room is the one torch fixed to the brick, and it sits
+// BEHIND the parchments and throws its light DOWN onto the page below it. A page
+// is dark until you have scrolled it under the flame; then the torch's pool falls
+// on it and, in the band the light reaches, it can be read. Scroll on and the
+// pool slides down onto the next page and this one falls back into dark.
 //
 // So the lighting is not keyed to an arbitrary line — it is measured against the
 // torch itself. Each frame we read where the flame actually is on screen (the
 // Torch marks it with data-torch-flame), drop to the reading zone just beneath
 // it, and light whichever page that pool falls on, clearing a readable band at
 // exactly that height.
+//
+// The sheet and the lighting are content-agnostic: ParchmentColumn lights
+// whatever pages you hand it, so Digressions fills them with hobbies and Projects
+// fills them with builds, both reading under the same flame.
 
 /** Per-page lighting: how far out of the dark it is, and where the pool falls on
  *  it (as a percentage down the page, so the band can be placed there). */
-type Lit = { amount: number; gy: number };
+export type Lit = { amount: number; gy: number };
 
 // How softly a page fades as the pool nears its edge, in px. Bigger is a gentler
 // hand-off, so the next page is warming before this one is fully cold and the
@@ -57,7 +62,7 @@ const GRAIN =
 const DECKLE =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='520' viewBox='0 0 400 520' preserveAspectRatio='none'%3E%3Cfilter id='d' x='-20' y='-20' width='440' height='560' filterUnits='userSpaceOnUse'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.018 0.028' numOctaves='2' seed='7' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='10'/%3E%3C/filter%3E%3Crect x='6' y='6' width='388' height='508' rx='8' fill='%23fff' filter='url(%23d)'/%3E%3C/svg%3E\")";
 
-function Parchment({ hobby, lit }: { hobby: Hobby; lit: Lit }) {
+export function Parchment({ lit, children }: { lit: Lit; children: ReactNode }) {
   const { amount, gy } = lit;
   return (
     <div
@@ -137,32 +142,7 @@ function Parchment({ hobby, lit }: { hobby: Hobby; lit: Lit }) {
           }}
         />
 
-        <div className="relative px-8 py-10 sm:px-11">
-          <h3 className="font-serif text-3xl font-light tracking-wide text-[#2a2017]">
-            {hobby.title}
-          </h3>
-          <p className="mt-3 max-w-prose font-serif text-[15px] italic leading-relaxed text-[#5b4a33]">
-            {hobby.intro}
-          </p>
-
-          {hobby.lists?.map((list) => (
-            <div key={list.label} className="mt-8">
-              <p className="mb-3 font-sans text-[10px] uppercase tracking-[0.24em] text-[#8a7248]">
-                {list.label}
-              </p>
-              <ul className="flex flex-col">
-                {list.items.map((item) => (
-                  <li
-                    key={item}
-                    className="border-b border-[#2a2017]/10 py-[7px] font-serif text-[16px] leading-snug text-[#33271b] last:border-b-0"
-                  >
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        <div className="relative px-8 py-10 sm:px-11">{children}</div>
 
         {/* Even the page under the torch is only lit where the light falls: this
             clears a readable pool at the flame's height and lets the rest of the
@@ -192,10 +172,16 @@ function Parchment({ hobby, lit }: { hobby: Hobby; lit: Lit }) {
 /** smoothstep, so a page eases out of the dark rather than ramping linearly. */
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
-export default function Digressions() {
+/** A page to hang on the wall: its own key, and the reading that goes on it. */
+export type Sheet = { key: string; content: ReactNode };
+
+// The scrolling column itself: it owns the torch-measuring lighting and lays a
+// set of already-open sheets down the wall, lighting whichever one the flame's
+// pool falls on. What is written on each sheet is the caller's business.
+export function ParchmentColumn({ sheets }: { sheets: Sheet[] }) {
   const refs = useRef<(HTMLDivElement | null)[]>([]);
   const [lits, setLits] = useState<Lit[]>(() =>
-    HOBBIES.map(() => ({ amount: 0, gy: 50 }))
+    sheets.map(() => ({ amount: 0, gy: 50 }))
   );
 
   useEffect(() => {
@@ -249,21 +235,61 @@ export default function Digressions() {
       window.removeEventListener("resize", onScroll);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [sheets.length]);
 
   return (
     <div className="flex flex-col items-center gap-[30vh] py-[20vh]">
-      {HOBBIES.map((h, i) => (
+      {sheets.map((s, i) => (
         <div
-          key={h.key}
+          key={s.key}
           ref={(el) => {
             refs.current[i] = el;
           }}
           className="w-full max-w-[34rem]"
         >
-          <Parchment hobby={h} lit={lits[i]} />
+          <Parchment lit={lits[i] ?? { amount: 0, gy: 50 }}>{s.content}</Parchment>
         </div>
       ))}
     </div>
+  );
+}
+
+// Digressions: the hobbies, each on its own sheet down the wall.
+export default function Digressions() {
+  const sheets: Sheet[] = HOBBIES.map((h) => ({
+    key: h.key,
+    content: <HobbyPage hobby={h} />,
+  }));
+  return <ParchmentColumn sheets={sheets} />;
+}
+
+function HobbyPage({ hobby }: { hobby: Hobby }) {
+  return (
+    <>
+      <h3 className="font-serif text-3xl font-light tracking-wide text-[#2a2017]">
+        {hobby.title}
+      </h3>
+      <p className="mt-3 max-w-prose font-serif text-[15px] italic leading-relaxed text-[#5b4a33]">
+        {hobby.intro}
+      </p>
+
+      {hobby.lists?.map((list) => (
+        <div key={list.label} className="mt-8">
+          <p className="mb-3 font-sans text-[10px] uppercase tracking-[0.24em] text-[#8a7248]">
+            {list.label}
+          </p>
+          <ul className="flex flex-col">
+            {list.items.map((item) => (
+              <li
+                key={item}
+                className="border-b border-[#2a2017]/10 py-[7px] font-serif text-[16px] leading-snug text-[#33271b] last:border-b-0"
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </>
   );
 }

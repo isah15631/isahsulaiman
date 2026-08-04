@@ -162,58 +162,48 @@ const fragmentShader = /* glsl */ `
     vec3 warm = mix(vec3(1.0, 0.52, 0.24), vec3(0.55, 0.60, 0.72), smoothstep(0.0, 7.0, d));
     vec3 col = warm * tone * lit;
 
-    // Daylight on snow. The night look above is the glow of the broken glass in
+    // Daylight on grass. The night look above is the glow of the broken glass in
     // the dark; this is the sun on the ground it landed on, present the whole way
     // out rather than pooled at the crater. A high, slightly raked sun so the
     // crater rim still catches an edge and throws a soft shadow into the bowl in
     // daylight too, otherwise the hole vanishes the moment the sky comes up.
-    // Snow takes its own tone, not the concrete's. Snow is smooth where sand is
-    // not, so the heavy blotching and fine grain that read as dune are pulled
-    // right down; what is left is a near-white field with a soft roll of relief
-    // and a sparse hard sparkle where the sun catches an ice facet, faded out
-    // with distance so it does not boil into moire across the drifts.
+    // Grass takes its own tone, not the concrete's: a green field with a fine
+    // blade grain combed by the wind over a broad tonal roll, so the near ground
+    // has the restless texture of grass and the far field settles into an even
+    // sward, faded out with distance so it does not boil into moire.
     float detail = 1.0 / (1.0 + d * 0.13);
-    // Wind-carved drift: long low ridges combed across the field by the wind, so
-    // the flat snow is not a dead sheet. A directional ripple broken up by the
-    // blotch noise so it wanders rather than stripes, and faded with distance so
-    // it never aliases out across the plane.
+    // Wind-combed grass: long low waves running across the field, so the flat
+    // sward is not a dead sheet. A directional ripple broken up by the blotch
+    // noise so it wanders rather than stripes, plus a fine cross-blade weave, both
+    // faded with distance so they never alias out across the plane.
     float along = dot(vXY, vec2(0.94, 0.34));
-    float drift = sin(along * 1.05 + blotch * 5.0) * (0.5 + 0.5 * fbm(vXY * 0.32));
-    float snowTone = 0.86 + blotch * 0.16 + grain * 0.05 * detail
-                   + speck * 0.34 * detail + drift * 0.055 * detail;
-    // A faintly cooled white, the same snow the drifts and mountains are lit in,
-    // so the ground the moon lands on and the slopes behind it read as one field.
-    vec3 sand = vec3(0.90, 0.93, 0.99) * snowTone;
+    float blades = sin(along * 2.1 + blotch * 6.0) * (0.5 + 0.5 * fbm(vXY * 0.42));
+    float weave = fbm(vXY * 14.0) * detail;
+    float grassTone = 0.70 + blotch * 0.30 + grain * 0.16 * detail
+                    + blades * 0.10 * detail + weave * 0.14;
+    // A meadow green, the same grass the rise and the far hills are lit in, so the
+    // ground the moon lands on and the slopes behind it read as one field.
+    vec3 blade = vec3(0.24, 0.42, 0.15) * grassTone;
     float sun = max(dot(normalize(vNormal), normalize(vec3(0.22, 1.0, 0.18))), 0.0);
-    // A warm winter sun on the lit snow over a cool sky fill in the shade, so the
-    // ground carries a clear light direction and temperature instead of a flat
-    // wash: the open field reads warm-white and the shaded crater walls go blue.
-    vec3 dayLit = sand * 0.42
-                + sand * vec3(0.85, 0.78, 0.64) * sun
-                + sand * vec3(0.20, 0.30, 0.52) * (1.0 - sun);
+    // A warm sun on the lit grass over a cool sky fill in the shade, so the ground
+    // carries a clear light direction and temperature instead of a flat wash: the
+    // open sward reads warm green and the shaded crater walls go cool.
+    vec3 dayLit = blade * 0.46
+                + blade * vec3(1.05, 1.02, 0.55) * sun
+                + blade * vec3(0.26, 0.40, 0.34) * (1.0 - sun);
 
-    // Ice glints: a sparse scatter of hard bright specks that catch the sun and
-    // twinkle, only on the near snow so the far field does not boil. This is the
-    // life in the white — a still snowfield reads as a void; a twinkling one is
-    // cold and vast and alive.
-    vec2 gcell = floor(vXY * 82.0);
-    float glint = smoothstep(0.9, 1.0, hash(gcell));
-    glint *= 0.5 + 0.5 * sin(uTime * 3.1 + hash(gcell + 3.7) * 6.283);
-    float glintFade = 1.0 / (1.0 + d * d * 0.06);
-    dayLit += vec3(1.0, 0.99, 0.96) * glint * glintFade * 0.7 * (0.3 + 0.7 * sun);
-
-    // The impact site is bare rock. A dark stone shelf stands in the snow at the
-    // centre, so the moon comes down ON rock rather than on soft snow, and it is
-    // here BEFORE the landing so the crash reads: a rock hitting a rock. The edge
-    // is broken up by the ground noise so it is a ragged outcrop, not a disc, and
-    // the crater is punched into it. Snow still lies in the hollows of the stone.
-    float rockEdge = (blotch - 0.5) * 1.6;
-    float rockMask = 1.0 - smoothstep(2.4 + rockEdge, 4.4 + rockEdge, d);
-    vec3 stone = vec3(0.20, 0.20, 0.23) * (0.55 + 0.85 * sun);
-    stone += vec3(0.30, 0.40, 0.56) * 0.12;
-    stone *= 0.82 + 0.4 * grain;
-    stone = mix(stone, dayLit, smoothstep(0.62, 0.92, blotch) * 0.5);
-    dayLit = mix(dayLit, stone, rockMask);
+    // The impact site is bare earth. A dark soil scar stands torn open in the
+    // grass at the centre, so the moon comes down ON ground rather than settling
+    // into the sward, and it is here BEFORE the landing so the crash reads: a rock
+    // into raw earth. The edge is broken up by the ground noise so it is a ragged
+    // scar, not a disc, and the crater is punched into it. Grass still fringes the
+    // hollows of the soil.
+    float soilEdge = (blotch - 0.5) * 1.6;
+    float soilMask = 1.0 - smoothstep(2.4 + soilEdge, 4.4 + soilEdge, d);
+    vec3 soil = vec3(0.22, 0.15, 0.09) * (0.6 + 0.75 * sun);
+    soil += vec3(0.26, 0.20, 0.14) * 0.5 * grain;
+    soil = mix(soil, dayLit, smoothstep(0.62, 0.92, blotch) * 0.35);
+    dayLit = mix(dayLit, soil, soilMask);
 
     // And the dust it kicked up, running outward as a ring and thinning as it
     // goes.
@@ -225,9 +215,9 @@ const fragmentShader = /* glsl */ `
     float dustFade =
       smoothstep(0.0, 0.05, uDust) * (1.0 - smoothstep(0.35, 1.0, uDust));
     col += vec3(0.85, 0.72, 0.60) * ring * dustFade * 0.55;
-    // On snow the shock ring is not warm dust but a bright rush of blown powder,
-    // so in daylight the ring reads white-blue across the ground.
-    dayLit += vec3(0.95, 0.97, 1.0) * ring * dustFade * 0.6;
+    // On grass the shock ring is a rush of torn earth and dust thrown up across
+    // the sward, so in daylight the ring reads as warm brown over the green.
+    dayLit += vec3(0.55, 0.42, 0.28) * ring * dustFade * 0.6;
 
     // In the dark the floor is only as opaque as it is lit. In daylight the
     // ground is simply there, so the sky does not read straight through it.
@@ -323,6 +313,13 @@ export default function Floor({ y, struck, nowRef }: FloorProps) {
       position={[0, y, 0]}
       rotation={[-Math.PI / 2, 0, 0]}
       renderOrder={0}
+      // The disc is grown to its real size (radius uFar) in the vertex shader, so
+      // three.js only ever sees the unit RingGeometry and computes a bounding
+      // sphere about a metre across at the origin. While the camera rides high on
+      // the way down, that tiny bound falls below the frustum and the WHOLE floor
+      // is culled — the ground vanishes and the pale sky reads straight through at
+      // the bottom of the frame. It is always under the camera, so never cull it.
+      frustumCulled={false}
     />
   );
 }

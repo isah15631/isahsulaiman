@@ -1,9 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ABOUT, STACK } from "@/lib/content";
 import BrickWall from "./BrickWall";
+import PassageTorch from "./PassageTorch";
 import PortraitAssembly from "./PortraitAssembly";
 
 // Beat one of the way in to About.
@@ -21,29 +22,6 @@ import PortraitAssembly from "./PortraitAssembly";
 // Everything lives in ONE svg on the torch's 96x132 body box, so the band and
 // the wings share the handle's exact coordinates and the morph lines up with no
 // layout maths: the band sits at (48,82), and that is where the wings hinge.
-
-const FLAME_OUTER =
-  "M20,4 C25,24 34,30 34,48 C34,64 28,74 20,74 C12,74 6,64 6,48 C6,30 15,24 20,4 Z";
-const FLAME_MID =
-  "M20,20 C23,34 30,38 30,52 C30,64 25,71 20,71 C15,71 10,64 10,52 C10,38 17,34 20,20 Z";
-const FLAME_CORE =
-  "M20,36 C22,44 26,47 26,55 C26,63 23,68 20,68 C17,68 14,63 14,55 C14,47 18,44 20,36 Z";
-
-// One wing, drawn in the body's own 96x132 space with its root at the band,
-// (48,82). A forewing sweeping up and out and a smaller hindwing under it.
-const FOREWING = "M48,80 C50,56 66,38 82,41 C94,43 92,59 81,69 C69,80 56,82 48,82 Z";
-const HINDWING = "M48,84 C58,82 77,85 81,95 C84,103 74,110 64,103 C55,97 50,90 48,84 Z";
-
-// The stars the wings carry, in the wing's own space: a few points bright enough
-// to survive being small, out where the light catches the membrane rather than
-// in the dark pooled at the root. Same idea as the swarm's wings.
-const GLINTS: [number, number, number, number][] = [
-  // x, y, radius, opacity
-  [72, 51, 2.3, 0.95],
-  [80, 58, 1.5, 0.68],
-  [65, 60, 1.8, 0.85],
-  [73, 95, 1.5, 0.6],
-];
 
 // The rubble thrown off the seam as the wall breaks open: a scatter of brick
 // chunks that burst out, arc, and fall, and soft billows of dust that bloom off
@@ -63,7 +41,9 @@ const STONES = ["#3a2e24", "#2c231c", "#453626", "#241d17", "#33291f"];
 
 function Rubble() {
   // Rolled once. Both bursts leave the same seam (screen centre), the debris
-  // falling under gravity and the dust lifting and spreading as it thins.
+  // falling under gravity. The soft dust billows are gone — their big blurred
+  // radials were the expensive part, and dropping them keeps the break sharp and
+  // cheap.
   const [bits] = useState(() => ({
     debris: Array.from({ length: 20 }, (_, i) => {
       const dir = Math.random() < 0.5 ? -1 : 1;
@@ -81,41 +61,10 @@ function Rubble() {
         clip: pick(CHUNKS),
       };
     }),
-    dust: Array.from({ length: 11 }, (_, i) => {
-      const dir = Math.random() < 0.5 ? -1 : 1;
-      return {
-        id: i,
-        top: rand(4, 78),
-        size: rand(50, 150),
-        out: dir * rand(20, 120),
-        lift: rand(20, 90),
-        dur: rand(1.3, 2.4),
-        delay: rand(0, 0.4),
-      };
-    }),
   }));
 
   return (
     <div className="pointer-events-none absolute inset-0 z-30" aria-hidden>
-      {bits.dust.map((d) => (
-        <motion.div
-          key={`dust-${d.id}`}
-          className="absolute left-1/2 rounded-full"
-          style={{
-            top: `${d.top}%`,
-            width: d.size,
-            height: d.size,
-            marginLeft: -d.size / 2,
-            marginTop: -d.size / 2,
-            background:
-              "radial-gradient(circle, rgba(150,138,122,0.5), rgba(120,108,94,0.18) 46%, transparent 72%)",
-            filter: "blur(5px)",
-          }}
-          initial={{ x: 0, y: 0, scale: 0.2, opacity: 0 }}
-          animate={{ x: d.out, y: -d.lift, scale: 2.3, opacity: [0, 0.55, 0] }}
-          transition={{ duration: d.dur, delay: d.delay, ease: "easeOut", opacity: { duration: d.dur, delay: d.delay, times: [0, 0.2, 1] } }}
-        />
-      ))}
       {bits.debris.map((p) => (
         <motion.div
           key={`deb-${p.id}`}
@@ -160,15 +109,6 @@ const PERSP = 1000;
 const ROOM_DEPTH = 900;
 const NEAR_Z = ROOM_DEPTH * 0.82;
 const DOLLY = { duration: 2.1, ease: [0.5, 0, 0.2, 1] } as const;
-
-// Where the torch is carried to once we are inside, and how far it leans there.
-// Off to the upper left of the sheet, tilted clockwise so the flame points up and
-// in over the page and the body/handle no longer hangs across the reading. Its
-// light pool (which rides with it) then falls across the paper from the side, so
-// it reads as a torch being held up TO the page rather than a lamp bolted above it.
-const TORCH_X = -190;
-const TORCH_Y = -6;
-const TORCH_TILT = 26;
 
 // The room the doorway opens into, built in CSS 3D so moving in reads as walking
 // through it. A back wall of brick (the parchment hangs against it) with
@@ -262,6 +202,28 @@ const PAPER_GRAIN =
 const P_DECKLE =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='520' viewBox='0 0 400 520' preserveAspectRatio='none'%3E%3Cfilter id='d' x='-20' y='-20' width='440' height='560' filterUnits='userSpaceOnUse'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.018 0.028' numOctaves='2' seed='7' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='10'/%3E%3C/filter%3E%3Crect x='6' y='6' width='388' height='508' rx='8' fill='%23fff' filter='url(%23d)'/%3E%3C/svg%3E\")";
 
+// The torch's light on the page, as in Digressions but hung the other way up: the
+// flame is carried ABOVE the sheet (the torch leans up and aside), so the pool
+// falls on the TOP of the parchment and the page sinks into dark toward its foot,
+// rather than Digressions' fixed band lit from a torch that sits below. The pool
+// is biased a touch left, toward where the torch is carried.
+//
+// WARM is screen-blended firelight caught in the fibres; AMBER is an overlay wash
+// so the paper turns honey-warm rather than merely brighter; DARK_FOOT is the
+// dark the page falls into below the lit band, painted OVER the reading so text
+// scrolled below the pool reads as being out of the light.
+const P_WARM_TOP =
+  "radial-gradient(ellipse 92% 54% at 42% 3%, " +
+  "rgba(255,201,120,0.82) 0%, rgba(255,160,74,0.5) 34%, " +
+  "rgba(255,120,40,0.2) 62%, transparent 82%)";
+const P_AMBER_TOP =
+  "radial-gradient(ellipse 104% 60% at 42% 1%, " +
+  "rgba(255,112,28,0.85) 0%, rgba(222,98,26,0.55) 40%, " +
+  "rgba(180,80,24,0.2) 66%, transparent 84%)";
+const P_DARK_FOOT =
+  "radial-gradient(ellipse 122% 78% at 42% 0%, " +
+  "transparent 0%, transparent 44%, rgba(8,6,4,0.58) 74%, rgba(8,6,4,0.9) 94%)";
+
 // The iron bail bolted to the brick, that the sheet hangs from: a nail driven
 // into the wall, a hooked ring off it, and the pin that ring carries through the
 // top of the parchment.
@@ -304,44 +266,53 @@ function Tack() {
   );
 }
 
-function WallParchment({ reveal }: { reveal: boolean }) {
-  // The sheet is simply already there, hung on the wall, when we step into the
-  // room — no swarm forms it any more. It just softly resolves in with the room
-  // as we come through the doorway, and once the camera has walked up to it the
-  // reading inks itself onto it.
+function WallParchment({ near, gone }: { near: boolean; gone: boolean }) {
+  // The sheet is already there, hung on the wall, when the doors split — but it is
+  // deep in the room and there is no light on it yet, so all we catch is a faint
+  // hint of paper in the dark. As the camera walks up to it (`near`), the torch is
+  // carried up over it and its light climbs the sheet from the TOP, the near-black
+  // veil lifting as the warm pool arrives. No reading lives here: once we have
+  // arrived the ReadingPanel takes over on a clean 2D layer (which, unlike this 3D
+  // plane, scrolls properly under a finger), and this sheet hands off to it —
+  // fading out on `gone` so the two are never on screen together with the torch
+  // caught between them, then coming back on the way out.
   return (
-    <div className="absolute left-1/2 top-[44%] z-10 w-[34rem] max-w-[88vw] -translate-x-1/2 -translate-y-1/2">
-      {/* the bail it hangs from, bolted to the brick above the sheet */}
+    <motion.div
+      className="absolute left-1/2 top-[44%] z-10 w-[34rem] max-w-[88vw] -translate-x-1/2 -translate-y-1/2"
+      initial={false}
+      animate={{ opacity: gone ? 0 : 1 }}
+      transition={{ duration: gone ? 0.6 : 0.5, ease: "easeOut" }}
+    >
+      {/* the bail it hangs from, bolted to the brick above the sheet — barely
+          there in the dark, resolving as the light reaches it */}
       <motion.div
         className="pointer-events-none absolute -top-[3.4rem] left-1/2 -translate-x-1/2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+        initial={false}
+        animate={{ opacity: near ? 1 : 0.18 }}
+        transition={{ duration: 1.6, ease: "easeOut" }}
       >
         <Bail />
       </motion.div>
       {/* and a tack pinning each top corner */}
       <motion.div
         className="pointer-events-none absolute -top-1 left-7"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+        initial={false}
+        animate={{ opacity: near ? 1 : 0.18 }}
+        transition={{ duration: 1.6, ease: "easeOut" }}
       >
         <Tack />
       </motion.div>
       <motion.div
         className="pointer-events-none absolute -top-1 right-7"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+        initial={false}
+        animate={{ opacity: near ? 1 : 0.18 }}
+        transition={{ duration: 1.6, ease: "easeOut" }}
       >
         <Tack />
       </motion.div>
 
       <div className="relative h-[42rem] max-h-[84vh] w-full">
-        {/* the sheet: the crisp paper the reading inks onto, already hanging on the
-            wall and resolving in with the room */}
-        <motion.div
+        <div
           className="absolute inset-0"
           style={{
             borderRadius: P_RADIUS,
@@ -354,9 +325,6 @@ function WallParchment({ reveal }: { reveal: boolean }) {
             WebkitMaskRepeat: "no-repeat",
             maskRepeat: "no-repeat",
           }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
         >
           {/* the paper: tone, worn border and darkened aged edges */}
           <div
@@ -383,65 +351,143 @@ function WallParchment({ reveal }: { reveal: boolean }) {
               opacity: 0.05,
             }}
           />
-          {/* a little of the torch's warmth caught in the fibres, off the top
-              where the flame hangs above it */}
-          <div
+          {/* the torch's warmth caught in the fibres off the top — off until we are
+              near, then arriving with the walk-in as the light climbs the sheet */}
+          <motion.div
             className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 78% 64% at 34% 6%, " +
-                "rgba(255,201,120,0.62) 0%, rgba(255,160,74,0.26) 40%, transparent 74%)," +
-                "radial-gradient(ellipse 120% 90% at 40% 0%, " +
-                "rgba(255,176,92,0.2) 0%, transparent 68%)",
-              mixBlendMode: "screen",
-            }}
+            style={{ background: P_WARM_TOP, mixBlendMode: "screen" }}
+            initial={false}
+            animate={{ opacity: near ? 1 : 0 }}
+            transition={{ duration: 1.7, delay: near ? 0.4 : 0, ease: "easeOut" }}
           />
-          {/* and the dark it sinks into away from the flame */}
-          <div
+          {/* the honey wash, so the lit top turns warm rather than merely brighter */}
+          <motion.div
             className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 130% 100% at 32% 4%, transparent 0%, transparent 42%, rgba(8,6,4,0.5) 88%)",
-            }}
+            style={{ background: P_AMBER_TOP, mixBlendMode: "overlay" }}
+            initial={false}
+            animate={{ opacity: near ? 1 : 0 }}
+            transition={{ duration: 1.7, delay: near ? 0.4 : 0, ease: "easeOut" }}
           />
-
-          {/* the reading, inked onto the sheet once we have arrived. Held in its
-              own scroll so a long page travels under the torch. */}
-          {reveal && (
-            <div
-              className="absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar"
-              style={{
-                pointerEvents: "auto",
-                touchAction: "pan-y",
-                WebkitOverflowScrolling: "touch",
-                overscrollBehavior: "contain",
-              }}
-            >
-              <InkContent />
-            </div>
-          )}
-        </motion.div>
+          {/* the dark the page falls into below the lit band, once the light is on it */}
+          <motion.div
+            className="pointer-events-none absolute inset-0"
+            style={{ background: P_DARK_FOOT }}
+            initial={false}
+            animate={{ opacity: near ? 1 : 0 }}
+            transition={{ duration: 1.7, delay: near ? 0.4 : 0, ease: "easeOut" }}
+          />
+          {/* the near-black veil the whole sheet sits under while it is still deep in
+              the room: not quite opaque, so only a faint hint of paper shows, then
+              lifting as we walk up and the torch reaches it */}
+          <motion.div
+            className="pointer-events-none absolute inset-0"
+            style={{ background: "#080604" }}
+            initial={false}
+            animate={{ opacity: near ? 0 : 0.9 }}
+            transition={{ duration: 1.8, ease: "easeOut" }}
+          />
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-function Wing() {
+// The reading itself, on its own 2D layer over the arrived room — NOT inside the
+// 3D dolly. That is deliberate: a scroll container nested under `perspective` /
+// `preserve-3d` / `translateZ` scrolls wrongly under a finger on mobile (the touch
+// jumps the page the moment it lands), so once we have walked up to the sheet the
+// text lives on a plain, un-transformed sheet that scrolls cleanly.
+//
+// It is lit exactly like the wall sheet: the torch's pool warms the TOP of the
+// page (WARM/AMBER, under the ink so the fibres glow) and the foot falls away into
+// dark (DARK_FOOT, over the ink so words scrolled below the pool sit out of the
+// light) — Digressions' firelit page, hung the other way up.
+function ReadingPanel() {
   return (
-    <>
-      <path d={FOREWING} fill="url(#strap-iron)" />
-      <path d={HINDWING} fill="url(#strap-iron)" opacity="0.85" />
-      {/* the night sky inside the membrane: deep and dark at the root, its colour
-          left alone at the rim, with a few glints. Painted straight onto the wing
-          shapes rather than a clipped rectangle — a wider rect inflated the wing
-          group's bounding box, and since the flap hinges on that box's left edge,
-          it pushed the pivot off the handle and split the wings apart mid-beat. */}
-      <path d={FOREWING} fill="url(#wing-night)" />
-      <path d={HINDWING} fill="url(#wing-night)" />
-      {GLINTS.map(([x, y, r, o]) => (
-        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="#fff" opacity={o} />
-      ))}
-    </>
+    <motion.div
+      className="pointer-events-none absolute inset-0 z-[45] flex items-center justify-center px-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+    >
+      <div className="pointer-events-auto relative h-[84vh] w-[34rem] max-w-[92vw]" style={{ boxShadow: P_LIFT }}>
+        {/* The lit paper itself — tone, grain and the torch's warmth — painted ONCE
+            on a static layer that never moves. It alone carries the deckled mask,
+            the isolation and the two blend layers, so all of that cost is paid a
+            single time and cached as one texture. The scrolling text above it never
+            touches the mask or the blends, which is what keeps the scroll smooth:
+            with the scroller nested UNDER them, every scroll frame had to repaint
+            the whole masked, blended sheet on the main thread (and that repaint,
+            racing the torch's animating light pool, is what made the light trail). */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            borderRadius: P_RADIUS,
+            isolation: "isolate",
+            WebkitMaskImage: P_DECKLE,
+            maskImage: P_DECKLE,
+            WebkitMaskSize: "100% 100%",
+            maskSize: "100% 100%",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+          }}
+        >
+          {/* the paper */}
+          <div
+            className="absolute inset-0"
+            style={{
+              borderRadius: P_RADIUS,
+              background: PAPER,
+              border: "1px solid rgba(96,70,38,0.55)",
+              boxShadow:
+                "inset 0 0 0 1px rgba(255,246,222,0.25)," +
+                "inset 0 26px 40px -26px rgba(74,52,26,0.7)," +
+                "inset 0 -26px 40px -26px rgba(74,52,26,0.7)," +
+                "inset 26px 0 34px -26px rgba(74,52,26,0.6)," +
+                "inset -26px 0 34px -26px rgba(74,52,26,0.6)",
+            }}
+          />
+          {/* the grain */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage: PAPER_GRAIN,
+              backgroundSize: "170px 170px",
+              mixBlendMode: "multiply",
+              opacity: 0.05,
+            }}
+          />
+          {/* the torch's firelight warming the top of the page */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ background: P_WARM_TOP, mixBlendMode: "screen" }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ background: P_AMBER_TOP, mixBlendMode: "overlay" }}
+          />
+        </div>
+
+        {/* The reading, on its OWN compositor layer over the cached paper. No mask,
+            no blend, no isolation here — just text — so a scroll is a straight GPU
+            slide of this layer, not a repaint of the sheet beneath it. The words sit
+            well inside the padding, so the ragged deckle edge the paper layer already
+            carries never needs to clip them. `translateZ(0)` promotes it so the
+            browser hands scrolling to the compositor. */}
+        <div
+          className="absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar"
+          style={{
+            touchAction: "pan-y",
+            overscrollBehavior: "contain",
+            transform: "translateZ(0)",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          <InkContent />
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -451,13 +497,9 @@ export default function AboutEntry({
   lit: boolean;
   onBack: () => void;
 }) {
-  // The morph runs in order, so it reads as the band becoming the wings rather
-  // than everything happening at once:
-  //   unhinged  the band peels off (right half first, then left) and each half
-  //             is replaced by a wing growing from it (right, then left)
-  //   floating  only once both wings are out does the torch lift and drift
+  // The torch is winged and floating from the start; `unhinged` just marks that
+  // the passage has begun, pacing the reveal and gating the reading panel.
   const [unhinged, setUnhinged] = useState(false);
-  const [floating, setFloating] = useState(false);
   // Once the torch is free the wall it hung on splits down the middle and the
   // dark behind it opens up.
   const [split, setSplit] = useState(false);
@@ -479,18 +521,16 @@ export default function AboutEntry({
     // A beat, so the swap from the real torch to this one is invisible before it
     // starts to move.
     timers.current.push(window.setTimeout(() => setUnhinged(true), 120));
-    // ...and it only leaves the wall after the second wing has finished growing.
-    timers.current.push(window.setTimeout(() => setFloating(true), 120 + 1250));
-    // ...and only once it is floating clear does the wall open behind it.
-    timers.current.push(window.setTimeout(() => setSplit(true), 120 + 1250 + 880));
+    // ...then the wall opens behind the drifting torch.
+    timers.current.push(window.setTimeout(() => setSplit(true), 120 + 700 + 560));
     // ...and once the wall is open we are led through it into the room, where the
     // blank parchment is already hanging on the wall.
-    timers.current.push(window.setTimeout(() => setEntered(true), 120 + 1250 + 880 + 1500));
+    timers.current.push(window.setTimeout(() => setEntered(true), 120 + 700 + 560 + 1500));
     // ...a beat to take in the sheet on the far wall, then we dolly the rest of the
     // way into it.
-    timers.current.push(window.setTimeout(() => setInking(true), 120 + 1250 + 880 + 1500 + 1900));
+    timers.current.push(window.setTimeout(() => setInking(true), 120 + 700 + 560 + 1500 + 1900));
     // ...and, once we have nearly arrived, the reading inks itself onto the sheet.
-    timers.current.push(window.setTimeout(() => setReveal(true), 120 + 1250 + 880 + 1500 + 1900 + 1500));
+    timers.current.push(window.setTimeout(() => setReveal(true), 120 + 700 + 560 + 1500 + 1900 + 1500));
     return () => timers.current.forEach((t) => window.clearTimeout(t));
   }, []);
 
@@ -503,12 +543,7 @@ export default function AboutEntry({
     setInking(false);
     setEntered(false);
     timers.current.push(window.setTimeout(() => setSplit(false), 1100));
-    timers.current.push(
-      window.setTimeout(() => {
-        setFloating(false);
-        setUnhinged(false);
-      }, 1950)
-    );
+    timers.current.push(window.setTimeout(() => setUnhinged(false), 1950));
     timers.current.push(window.setTimeout(onBack, 2860));
   };
 
@@ -581,9 +616,9 @@ export default function AboutEntry({
                 style={{ transform: `translateZ(-${ROOM_DEPTH}px)` }}
               >
                 {/* The parchment: already hanging on the wall behind the doors, so
-                    it is revealed as they split — not popped in after. Inked on
-                    `reveal` once we have walked up to it. */}
-                <WallParchment reveal={reveal} />
+                    it is there as they split — only a faint hint of paper deep in
+                    the dark, then lit from the top as we walk up to it. */}
+                <WallParchment near={inking} gone={reveal} />
               </div>
             </motion.div>
           </div>
@@ -604,7 +639,7 @@ export default function AboutEntry({
           className="absolute inset-y-0 left-0 w-1/2 overflow-hidden"
           initial={false}
           animate={{ x: split ? "-72%" : "0%" }}
-          transition={{ duration: 1.15, ease: [0.5, 0, 0.15, 1] }}
+          transition={{ duration: 0.68, ease: [0.5, 0, 0.15, 1] }}
           style={{ willChange: "transform", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
         >
           {/* a full-viewport wall, pinned to the screen so the coursing lines up
@@ -624,7 +659,7 @@ export default function AboutEntry({
           className="absolute inset-y-0 right-0 w-1/2 overflow-hidden"
           initial={false}
           animate={{ x: split ? "72%" : "0%" }}
-          transition={{ duration: 1.15, ease: [0.5, 0, 0.15, 1] }}
+          transition={{ duration: 0.68, ease: [0.5, 0, 0.15, 1] }}
           style={{ willChange: "transform", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
         >
           <div className="absolute inset-y-0 right-0" style={{ width: "100vw" }}>
@@ -642,232 +677,15 @@ export default function AboutEntry({
           it clears it. */}
       {split && <Rubble />}
 
-      {/* The floating torch, sitting exactly where the fixture torch was. The
-          outermost wrapper owns the POSE (upright on the wall, then carried aside
-          and tilted to read the sheet once we are in), the middle owns the perpetual
-          drift, and the inner owns the unhinge. Keeping the pose out of the drift
-          layer lets the torch ease smoothly into its held angle while it still
-          breathes. On the wall it MUST stay upright and centred, so the swap from
-          the real fixture torch to this one is invisible; only once we are through
-          the doorway (`entered`) does it lean over to light the page. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center">
-        <motion.div
-          style={{ marginTop: 30 }}
-          initial={false}
-          animate={
-            entered
-              ? { x: TORCH_X, y: TORCH_Y, rotate: TORCH_TILT }
-              : { x: 0, y: 0, rotate: 0 }
-          }
-          transition={{ duration: 1.7, ease: [0.5, 0, 0.2, 1] }}
-        >
-          <motion.div
-            initial={false}
-            animate={
-              floating
-                ? { y: [-4, -13, -4], rotate: [-1.5, 1.5, -1.5] }
-                : { y: 0, rotate: 0 }
-            }
-            transition={
-              floating
-                ? { duration: 3.4, ease: "easeInOut", repeat: Infinity }
-                : { duration: 0.7, ease: "easeOut" }
-            }
-          >
-          <div className="relative flex flex-col items-center">
-            {/* the flame */}
-            <div
-              className="relative z-10"
-              data-torch-flame
-              style={{ width: 40, height: 86, marginBottom: "-22px" }}
-            >
-              <svg
-                width="40"
-                height="86"
-                viewBox="0 0 40 86"
-                fill="none"
-                aria-hidden
-                style={{ filter: "drop-shadow(0 0 12px rgba(255,150,60,0.75))" }}
-              >
-                <g className="torch-flame">
-                  <path d={FLAME_OUTER} fill="#ff6a14" opacity="0.92" />
-                  <path d={FLAME_MID} fill="#ffb02a" />
-                  <path d={FLAME_CORE} fill="#ffe9b0" />
-                </g>
-              </svg>
-            </div>
+      {/* Once we have walked up to the sheet, the reading fades up on its own 2D
+          layer over the arrived room (out of the 3D dolly, so it scrolls cleanly
+          under a finger), lit from the top by the torch just as the wall sheet is. */}
+      <AnimatePresence>{reveal && <ReadingPanel key="reading" />}</AnimatePresence>
 
-            {/* the body, and over it the band-that-becomes-wings on the same box */}
-            <div className="relative">
-              <svg
-                width="96"
-                height="132"
-                viewBox="0 0 96 132"
-                fill="none"
-                aria-hidden
-                style={{ filter: "drop-shadow(4px 8px 7px rgba(0,0,0,0.55))" }}
-              >
-                <defs>
-                  <linearGradient id="strap-wood" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0" stopColor="#1f130c" />
-                    <stop offset="0.26" stopColor="#573c28" />
-                    <stop offset="0.5" stopColor="#7c5a3d" />
-                    <stop offset="0.72" stopColor="#4f371f" />
-                    <stop offset="1" stopColor="#190f09" />
-                  </linearGradient>
-                  <radialGradient id="strap-head" cx="0.42" cy="0.3" r="0.8">
-                    <stop offset="0" stopColor="#4a382a" />
-                    <stop offset="0.55" stopColor="#2b201a" />
-                    <stop offset="1" stopColor="#140d09" />
-                  </radialGradient>
-                </defs>
-
-                {/* handle */}
-                <path
-                  d="M41 44 L55 44 L52 118 C52 121 49 123 48 123 C47 123 44 121 44 118 Z"
-                  fill="url(#strap-wood)"
-                  stroke="#150c07"
-                  strokeWidth="1"
-                />
-                <path d="M45 46 L45 116" stroke="rgba(255,170,90,0.5)" strokeWidth="1.6" strokeLinecap="round" />
-                {/* pitch head */}
-                <ellipse cx="48" cy="30" rx="16" ry="22" fill="url(#strap-head)" stroke="#120b07" strokeWidth="1.2" />
-                <path d="M33 18 Q48 24 63 18" stroke="#0e0906" strokeWidth="1.6" fill="none" />
-                <path d="M32 28 Q48 34 64 28" stroke="#0e0906" strokeWidth="1.6" fill="none" />
-                <path d="M33 38 Q48 44 63 38" stroke="#0e0906" strokeWidth="1.6" fill="none" />
-                <path d="M37 12 Q48 6 59 12 Q54 22 48 22 Q42 22 37 12 Z" fill="rgba(255,150,60,0.5)" />
-                <ellipse cx="42" cy="22" rx="4.5" ry="7" fill="rgba(150,150,160,0.12)" />
-              </svg>
-
-              {/* The band and the wings, on their own overlaid svg sharing the
-                  same 96x132 box so they sit exactly on the handle. */}
-              <svg
-                className="absolute inset-0"
-                width="96"
-                height="132"
-                viewBox="0 0 96 132"
-                fill="none"
-                aria-hidden
-                style={{ overflow: "visible" }}
-              >
-                <defs>
-                  <linearGradient id="strap-iron" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#63636c" />
-                    <stop offset="0.34" stopColor="#2a2a30" />
-                    <stop offset="0.52" stopColor="#4a4a53" />
-                    <stop offset="1" stopColor="#141418" />
-                  </linearGradient>
-                  {/* deep at the root (the band), gone by the rim */}
-                  <radialGradient
-                    id="wing-night"
-                    gradientUnits="userSpaceOnUse"
-                    cx="54"
-                    cy="80"
-                    r="46"
-                  >
-                    <stop offset="0" stopColor="#080a1c" stopOpacity="0.72" />
-                    <stop offset="0.45" stopColor="#0d1230" stopOpacity="0.45" />
-                    <stop offset="1" stopColor="#131a3c" stopOpacity="0" />
-                  </radialGradient>
-                </defs>
-
-                {/* The strap, split at the handle's centre into two halves that
-                    peel off one at a time. Each half lifts and fades exactly as
-                    the wing on its side grows in its place, so the eye reads the
-                    band turning into the wing rather than one thing swapped for
-                    another. The right goes first, then the left. */}
-                {/* right half of the band: right bolt, arm, and the 48..66 strap */}
-                <motion.g
-                  initial={false}
-                  animate={
-                    unhinged
-                      ? { opacity: 0, y: -11, scale: 1.07 }
-                      : { opacity: 1, y: 0, scale: 1 }
-                  }
-                  transition={{ duration: 0.42, ease: "easeOut", delay: unhinged ? 0.05 : 0.42 }}
-                  style={{ transformOrigin: "48px 82px" }}
-                >
-                  <circle cx="72" cy="82" r="4" fill="#4c4c54" stroke="#111115" strokeWidth="1" />
-                  <circle cx="70.6" cy="80.6" r="1.4" fill="#7c7c86" />
-                  <path d="M62 82 L68 82" stroke="#2a2a30" strokeWidth="3" strokeLinecap="round" />
-                  <path
-                    d="M48 72 Q57 71 66 74 L66 90 Q57 93 48 92 Z"
-                    fill="url(#strap-iron)"
-                    stroke="#111115"
-                    strokeWidth="1"
-                  />
-                </motion.g>
-                {/* left half of the band: left bolt, arm, and the 30..48 strap */}
-                <motion.g
-                  initial={false}
-                  animate={
-                    unhinged
-                      ? { opacity: 0, y: -11, scale: 1.07 }
-                      : { opacity: 1, y: 0, scale: 1 }
-                  }
-                  transition={{ duration: 0.42, ease: "easeOut", delay: unhinged ? 0.5 : 0.05 }}
-                  style={{ transformOrigin: "48px 82px" }}
-                >
-                  <circle cx="24" cy="82" r="4" fill="#4c4c54" stroke="#111115" strokeWidth="1" />
-                  <circle cx="22.6" cy="80.6" r="1.4" fill="#7c7c86" />
-                  <path d="M28 82 L34 82" stroke="#2a2a30" strokeWidth="3" strokeLinecap="round" />
-                  <path
-                    d="M30 74 Q39 71 48 72 L48 92 Q39 93 30 90 Z"
-                    fill="url(#strap-iron)"
-                    stroke="#111115"
-                    strokeWidth="1"
-                  />
-                </motion.g>
-
-                {/* The wings the strap became, hinged at the band (48,82), each
-                    growing from its own half of the band. The bloom is a
-                    scale/opacity on the outer group; the flap is the shared CSS
-                    class, hinged at the wing's own inner edge like the swarm's.
-                    Right grows first, left a beat later; closing, they fold in
-                    the reverse order. */}
-                <motion.g
-                  initial={false}
-                  animate={{ opacity: unhinged ? 1 : 0, scale: unhinged ? 0.78 : 0.2 }}
-                  transition={{ duration: 0.5, ease: "easeOut", delay: unhinged ? 0.16 : 0.22 }}
-                  style={{ transformOrigin: "48px 82px" }}
-                >
-                  <g className="butterfly__wing" style={{ ["--flap" as string]: "0.5s" }}>
-                    <Wing />
-                  </g>
-                </motion.g>
-                {/* left wing: the same shape mirrored about the hinge x = 48 */}
-                <motion.g
-                  initial={false}
-                  animate={{ opacity: unhinged ? 1 : 0, scale: unhinged ? 0.78 : 0.2 }}
-                  transition={{ duration: 0.5, ease: "easeOut", delay: unhinged ? 0.6 : 0 }}
-                  style={{ transformOrigin: "48px 82px" }}
-                >
-                  <g transform="translate(96,0) scale(-1,1)">
-                    <g className="butterfly__wing" style={{ ["--flap" as string]: "0.5s" }}>
-                      <Wing />
-                    </g>
-                  </g>
-                </motion.g>
-              </svg>
-            </div>
-
-            {/* the light it throws, guttering with the flame */}
-            <div
-              className="torch-glow pointer-events-none absolute left-1/2 -z-10"
-              style={{
-                top: 92,
-                width: "min(120vw, 1000px)",
-                height: "min(150vh, 1200px)",
-                transform: "translate(-50%, -50%)",
-                background:
-                  "radial-gradient(ellipse 46% 44% at 50% 50%, rgba(255,198,120,0.55) 0%, rgba(255,172,90,0.3) 24%, rgba(255,150,66,0.12) 46%, rgba(255,140,60,0) 72%)",
-                filter: "blur(30px)",
-              }}
-            />
-          </div>
-          </motion.div>
-        </motion.div>
-      </div>
+      {/* The torch that led us in — shared with the Projects passage. Upright and
+          centred on the wall so the swap from the real fixture torch is invisible,
+          then it leans aside on `entered` to light the page. */}
+      <PassageTorch lean={entered} zClassName="z-[48]" />
 
       {/* back, so this beat can be left while the rest is still being built */}
       <motion.button

@@ -14,11 +14,10 @@ import { dayLight } from "@/lib/descent";
 // middle of the frame while everything under it moved, and read as painted on
 // the lens.
 //
-// It used to be a Sahara at golden hour. It is snow now, so the light is wrung
-// of its heat: a wan low sun with no fire to it, a pale cold wash at the horizon
-// climbing to a deep winter blue, and clouds that are the flat grey-white of an
-// overcast rather than lit embers. The bones of the sky are the same; only the
-// blood has run cold.
+// It is a bright clear day now: a clean blue climbing from a pale luminous horizon
+// to a deep saturated blue overhead, an open sky with only a few high cool-white
+// clouds drifting through the low band rather than a solid overcast. The sun stays
+// cool and understated so nothing blows out, but the air itself is bright.
 //
 // The whole thing fades up from nothing on dayLight, so above the cloud deck the
 // frame is still the black of space and its stars, and it is only under the deck
@@ -77,11 +76,11 @@ const FRAG = /* glsl */ `
     // touch of rose into the haze around the disc and no further, so the sky
     // reads as a cold clear afternoon rather than a sunset.
     float warmth = pow(sd, 2.4);
-    vec3 horizon = mix(vec3(0.80, 0.85, 0.92), vec3(0.96, 0.90, 0.86), warmth);
-    vec3 midSky  = vec3(0.52, 0.64, 0.82);
-    vec3 highSky = vec3(0.18, 0.30, 0.56);
-    vec3 col = mix(horizon, midSky, smoothstep(0.0, 0.22, y));
-    col = mix(col, highSky, smoothstep(0.16, 0.70, y));
+    vec3 horizon = mix(vec3(0.72, 0.82, 0.92), vec3(0.88, 0.86, 0.84), warmth);
+    vec3 midSky  = vec3(0.44, 0.68, 0.94);
+    vec3 highSky = vec3(0.20, 0.48, 0.86);
+    vec3 col = mix(horizon, midSky, smoothstep(0.0, 0.20, y));
+    col = mix(col, highSky, smoothstep(0.16, 0.74, y));
 
     // The sun itself: a wan winter disc and a tight cold bloom, deliberately NOT
     // a wide haze, so the light stays a weak source low in the sky and never
@@ -106,14 +105,14 @@ const FRAG = /* glsl */ `
     // with only the faintest cool lift along the edges that face the sun, so they
     // read as winter cloud rather than lit embers. Two octaves of the field are
     // used, one for the mass and one for the torn rim.
-    float band = smoothstep(-0.06, 0.08, y) * (1.0 - smoothstep(0.34, 0.74, y));
-    float n = fbm(dir * 3.2 + vec3(0.0, 0.0, 3.1));
-    float cloud = smoothstep(0.47, 0.70, n) * band;
-    float rim = clamp(smoothstep(0.40, 0.52, n) - smoothstep(0.52, 0.68, n), 0.0, 1.0);
-    vec3 cloudBody = vec3(0.60, 0.66, 0.76);
-    vec3 cloudLit = mix(vec3(0.82, 0.86, 0.92), vec3(0.98, 0.97, 0.96), warmth);
-    vec3 cloudCol = mix(cloudBody, cloudLit, clamp(sd * 1.2 + 0.20, 0.0, 1.0));
-    cloudCol += cloudLit * rim * band * (0.4 + sd) * 0.6;
+    float band = smoothstep(0.03, 0.18, y) * (1.0 - smoothstep(0.44, 0.80, y));
+    float n = fbm(dir * 2.5 + vec3(0.0, 0.0, 3.1));
+    float cloud = smoothstep(0.60, 0.82, n) * band * 0.82;
+    float rim = clamp(smoothstep(0.54, 0.62, n) - smoothstep(0.62, 0.78, n), 0.0, 1.0);
+    vec3 cloudBody = vec3(0.82, 0.87, 0.94);
+    vec3 cloudLit = vec3(0.99, 0.99, 1.0);
+    vec3 cloudCol = mix(cloudBody, cloudLit, clamp(sd * 1.2 + 0.4, 0.0, 1.0));
+    cloudCol += cloudLit * rim * band * 0.4;
     col = mix(col, cloudCol, cloud);
 
     // A hair of dither, broken up per pixel. The sky is a wide, smooth, low

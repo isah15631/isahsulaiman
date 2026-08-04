@@ -5,21 +5,21 @@ import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { dayLight } from "@/lib/descent";
 
-// Snow drizzling down the frame.
+// Pollen and seed motes drifting through the frame.
 //
-// A cloud of small flakes kept in a box around the eye, so wherever the camera
-// looks the air in front of it is full of snow. The box is re-centred on the
-// camera every frame but never rotated with it, so the flakes always fall
-// straight down in the world no matter which way we are turned.
+// A cloud of small motes kept in a box around the eye, so wherever the camera
+// looks the air in front of it is alive with drift. The box is re-centred on the
+// camera every frame but never rotated with it, so the motes always sink slowly
+// down in the world no matter which way we are turned.
 //
-// It costs almost nothing: every flake carries its own phase and fall speed and
-// does the falling itself in the vertex shader against one clock, wrapping back
+// It costs almost nothing: every mote carries its own phase and drift speed and
+// does the sinking itself in the vertex shader against one clock, wrapping back
 // to the top of the column when it reaches the floor of it, so there is no
 // per-frame work on the CPU beyond following the camera. The whole field fades
-// up on dayLight, the same as the sky and the ground, so there is no snow in the
-// black of space on the way down: it arrives with the winter it belongs to.
+// up on dayLight, the same as the sky and the ground, so there is nothing in the
+// black of space on the way down: it arrives with the meadow it belongs to.
 
-// Half-extents of the column of falling snow around the eye. Wide and deep
+// Half-extents of the column of drifting motes around the eye. Wide and deep
 // enough to fill a turning frame, tall enough that the wrap never shows.
 const BOX = new THREE.Vector3(22, 16, 22);
 
@@ -37,9 +37,10 @@ const VERT = /* glsl */ `
     float H = uBox.y * 2.0;
     float y = mod((position.y - uTime * fall) + uBox.y, H) - uBox.y;
 
-    // A little sway, so it drifts rather than dropping on rails.
-    float sx = sin(uTime * 0.6 + phase) * 0.6;
-    float sz = cos(uTime * 0.5 + phase * 1.3) * 0.5;
+    // A wide, slow sway, so each mote wanders on the air rather than dropping on
+    // rails: the loose, buoyant drift of pollen rather than the fall of snow.
+    float sx = sin(uTime * 0.4 + phase) * 1.2;
+    float sz = cos(uTime * 0.33 + phase * 1.3) * 1.0;
     vec3 pos = vec3(position.x + sx, y, position.z + sz);
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
@@ -64,11 +65,13 @@ const FRAG = /* glsl */ `
   varying float vEdge;
 
   void main(){
-    // A soft round flake out of the square point sprite.
+    // A soft round mote out of the square point sprite.
     float r = length(gl_PointCoord - 0.5);
-    float a = smoothstep(0.5, 0.08, r) * vEdge * uDay * 0.9;
+    float a = smoothstep(0.5, 0.08, r) * vEdge * uDay * 0.8;
     if (a < 0.01) discard;
-    gl_FragColor = vec4(vec3(0.98, 0.99, 1.0), a);
+    // A warm, pale off-white, the colour of seed-down and pollen caught in the
+    // sun rather than the cold blue-white of snow.
+    gl_FragColor = vec4(vec3(1.0, 0.97, 0.80), a);
   }
 `;
 
@@ -99,8 +102,8 @@ export default function Snowfall({
       pos[i * 3 + 1] = (rand() * 2 - 1) * BOX.y;
       pos[i * 3 + 2] = (rand() * 2 - 1) * BOX.z;
       data[i * 3] = rand() * 6.283; // phase
-      data[i * 3 + 1] = 1.2 + rand() * 1.8; // fall speed
-      data[i * 3 + 2] = 0.5 + rand() * 1.1; // size
+      data[i * 3 + 1] = 0.28 + rand() * 0.5; // drift speed, slow and buoyant
+      data[i * 3 + 2] = 0.45 + rand() * 1.0; // size
     }
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     g.setAttribute("aData", new THREE.BufferAttribute(data, 3));

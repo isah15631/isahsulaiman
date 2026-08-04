@@ -80,11 +80,11 @@ export default function ApproachCam({
     // B: standing off the door, gaze lifted so it stands low against the sky.
     vecs.b.set(cx, cy + EYE_ABOVE, cz + STANDOFF);
     vecs.bLook.set(cx, cy + DOOR_MID + VISTA_LIFT, cz);
-    // T: into the mouth of the opening, looking on into the dark — but held just
-    // shallow enough that the lens does not clear the door's dark interior plane
-    // and catch the snow world behind it before the black has closed over.
-    vecs.t.set(cx, cy + DOOR_MID + 0.45, cz - 0.5);
-    vecs.tLook.set(cx, cy + DOOR_MID + 0.15, cz - 2.5);
+    // T: the final hold, kept SHORT of the portal so the camera never crosses its
+    // plane — we do not pass through it. It eases in a touch closer while gazing at
+    // the oval, and the black closes over from here instead of a push-through.
+    vecs.t.set(cx, cy + DOOR_MID + 0.35, cz + 1.5);
+    vecs.tLook.set(cx, cy + DOOR_MID + 0.1, cz);
 
     // pull back onto the vista
     vecs.pos.copy(vecs.a).lerp(vecs.v, rp);
