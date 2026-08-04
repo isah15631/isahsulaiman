@@ -8,6 +8,7 @@ import {
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ABOUT, PROJECTS, CONTACT, STACK } from "@/lib/content";
+import AboutEntry from "./AboutEntry";
 import BrickWall from "./BrickWall";
 import Carrier from "./Carrier";
 import Companion from "./Companion";
@@ -104,6 +105,10 @@ export default function Sections({
   onIgnite: () => void;
 }) {
   const [selected, setSelected] = useState<SectionKey | null>(null);
+  // About is no longer a fall. Clicking it plays the passage-in sequence, which
+  // owns the whole frame (its own floating torch, its own wall) until you come
+  // back out to the menu.
+  const [aboutEntry, setAboutEntry] = useState(false);
   // The room is lit once the torch has caught, and it never goes out again:
   // there is no switch any more. `lit` simply follows the world's one-way latch.
   const lit = ignited;
@@ -136,6 +141,10 @@ export default function Sections({
     "drop-shadow(0px 9px 5px rgba(0,0,0,0.55))";
 
   const open = (key: SectionKey) => {
+    if (key === "about") {
+      setAboutEntry(true);
+      return;
+    }
     setDown(true);
     setSelected(key);
   };
@@ -149,14 +158,18 @@ export default function Sections({
     // is falling past the other they would otherwise share a scrollbar and
     // fight over its height.
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#070504] text-neutral-200">
-      {/* the wall the torch is strapped to, at the very back of the room */}
-      <BrickWall />
+      {/* the wall the torch is strapped to, at the very back of the room. While
+          the About passage is playing it owns the wall (it splits its own copy
+          of it down the middle), so this one steps aside to avoid two walls. */}
+      {!aboutEntry && <BrickWall />}
 
       {/* The torch is a fixture of the room, not of the menu. It is mounted here,
           at the room root and outside the panes that slide, so it stays nailed to
           exactly the same spot on the wall whether you are at the menu or dropped
-          into a section. Every page is lit by this one flame. */}
-      <Torch lit={lit} />
+          into a section. Every page is lit by this one flame. While the About
+          passage is playing it brings its own floating torch, so this fixture
+          stands down to avoid two flames in the same spot. */}
+      {!aboutEntry && <Torch lit={lit} />}
 
       {/* warm vignette so sections feel like the world the butterflies made */}
       <motion.div
@@ -227,9 +240,15 @@ export default function Sections({
                   would outrank the hover:text-ember class and kill the hover. */}
               <motion.nav
                 className="relative z-10 mt-[26vh] flex flex-col items-center gap-6"
-                aria-hidden={!lit}
+                aria-hidden={!lit || aboutEntry}
                 // the torchlight catching the letterforms
-                style={{ filter: LIT }}
+                style={{ filter: LIT, pointerEvents: aboutEntry ? "none" : undefined }}
+                // Once About is clicked the words clear out of the way: the room
+                // is becoming the passage in, and the menu has no place in it.
+                // They come back when you return.
+                initial={false}
+                animate={{ opacity: aboutEntry ? 0 : 1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
               >
                 {MENU.map((m, i) => (
                   <motion.button
@@ -313,6 +332,11 @@ export default function Sections({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* The About passage, over everything, when it is open. */}
+      {aboutEntry && (
+        <AboutEntry lit={lit} onBack={() => setAboutEntry(false)} />
+      )}
     </div>
   );
 }

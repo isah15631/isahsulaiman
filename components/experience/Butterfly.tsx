@@ -26,6 +26,11 @@ type ButterflyProps = {
   size?: number;
   flapDuration?: number; // seconds
   flapOffset?: number; // negative delay, so a swarm doesn't beat in unison
+  // The night sky inside the membrane is worth it on the big, hero butterflies,
+  // but on a swarm of tiny ones it is sub-pixel noise AND a clip + gradient + four
+  // circles per instance, redrawn every frame. On by default (nothing regresses);
+  // dense swarms of small ones pass sky={false} to shed that cost.
+  sky?: boolean;
 };
 
 // Right-hand wings, drawn in a 100×100 box with the body along x = 50.
@@ -76,11 +81,13 @@ export default function Butterfly({
   size = 22,
   flapDuration = 0.28,
   flapOffset = 0,
+  sky = true,
 }: ButterflyProps) {
   // Unique per instance. Two of these on a page sharing an id would both resolve
   // to whichever one mounted first, and the sky would vanish out of every wing
   // the moment that one left.
-  const night = useId().replace(/:/g, "");
+  const id = useId().replace(/:/g, "");
+  const night = sky ? id : undefined;
 
   const style = {
     ["--flap" as string]: `${flapDuration}s`,
@@ -97,25 +104,27 @@ export default function Butterfly({
       style={style}
       aria-hidden
     >
-      <defs>
-        <clipPath id={`${night}-clip`}>
-          <path d={FOREWING} />
-          <path d={HINDWING} />
-        </clipPath>
-        {/* Deep at the root, gone by the rim. The colour survives where the wing
-            is thin and the light is passing through it, which is the edge. */}
-        <radialGradient
-          id={`${night}-wash`}
-          gradientUnits="userSpaceOnUse"
-          cx="56"
-          cy="46"
-          r="46"
-        >
-          <stop offset="0" stopColor="#080a1c" stopOpacity="0.68" />
-          <stop offset="0.45" stopColor="#0d1230" stopOpacity="0.42" />
-          <stop offset="1" stopColor="#131a3c" stopOpacity="0" />
-        </radialGradient>
-      </defs>
+      {night && (
+        <defs>
+          <clipPath id={`${night}-clip`}>
+            <path d={FOREWING} />
+            <path d={HINDWING} />
+          </clipPath>
+          {/* Deep at the root, gone by the rim. The colour survives where the wing
+              is thin and the light is passing through it, which is the edge. */}
+          <radialGradient
+            id={`${night}-wash`}
+            gradientUnits="userSpaceOnUse"
+            cx="56"
+            cy="46"
+            r="46"
+          >
+            <stop offset="0" stopColor="#080a1c" stopOpacity="0.68" />
+            <stop offset="0.45" stopColor="#0d1230" stopOpacity="0.42" />
+            <stop offset="1" stopColor="#131a3c" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+      )}
 
       {/* right wings */}
       <g>
