@@ -10,8 +10,8 @@ import PortraitAssembly from "./PortraitAssembly";
 // flame. The torch is fixed at the top of the room and its light pool falls where
 // you have scrolled to; when that pool reaches the frame the picture warms out of
 // grey into colour and firelight catches the glass, and scrolling it back out of
-// the light lets it fall to grey again. Same reading as the parchments in
-// Digressions: one torch, and whatever it is over is the thing that lives.
+// the light lets it fall to grey again. Same reading as the section parchments
+// (see ParchmentColumn): one torch, and whatever it is over is the thing that lives.
 
 // The portrait's shape: a dome at the top, gently rounded below — an arch rather
 // than a locket-oval or a flat rectangle.

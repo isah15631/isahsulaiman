@@ -24,20 +24,20 @@ export const DOOR_POS: [number, number, number] = [1.5, FLOOR_Y + 1.6, -9];
  * lands and it is gone off the bottom of the frame before it settles.
  */
 export const REVEAL = {
-  start: BEAT.impact + 1.3,
-  end: BEAT.impact + 2.6,
+  start: BEAT.impact + 1.1,
+  end: BEAT.impact + 2.2,
 };
 
 /** Hold the vista a moment, then go in to the door. */
 export const APPROACH = {
-  start: BEAT.impact + 2.7,
-  end: BEAT.impact + 5.7,
+  start: BEAT.impact + 2.3,
+  end: BEAT.impact + 4.7,
 };
 
 /** Straight on from the standoff, through the opening, into the dark. */
 export const THROUGH = {
   start: APPROACH.end,
-  end: APPROACH.end + 1.3,
+  end: APPROACH.end + 1.2,
 };
 
 /**

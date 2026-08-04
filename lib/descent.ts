@@ -67,15 +67,15 @@ export const BEAT = {
   /** it hangs there, alive */
   hang: 0,
   /** and then it lets go */
-  release: 1.5,
-  /** the top of the air, where the long slow fall onto the snow begins */
-  entry: 5.2,
+  release: 0.9,
+  /** the top of the air, where the fall onto the snow begins */
+  entry: 2.7,
   /** into the deck */
-  cloud: 5.9,
+  cloud: 3.3,
   /** out of the bottom of it, into the open air above the snow */
-  clear: 6.9,
+  clear: 4.0,
   /** and lands */
-  impact: 9.2,
+  impact: 5.4,
 };
 
 /**

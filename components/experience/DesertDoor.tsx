@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { FLOOR_Y } from "@/lib/descent";
-import { formP, throughCamQ } from "@/lib/approach";
+import { approachP, formP, throughCamQ } from "@/lib/approach";
 
 // The mirror the swarm flies into, out on the field.
 //
@@ -48,6 +48,7 @@ const PORTAL_VERT = /* glsl */ `
 const PORTAL_FRAG = /* glsl */ `
   uniform float uTime;
   uniform float uForm;   // 0 not here yet, 1 fully present
+  uniform float uSpin;   // 0 on the vista, rising as the camera bears in
   uniform vec2 uEllipse; // ellipse radii as a fraction of the plane half-size
   varying vec2 vUv;
 
@@ -80,10 +81,20 @@ const PORTAL_FRAG = /* glsl */ `
     vec2 ep = vec2(p.x / uEllipse.x, p.y / uEllipse.y);
     float e = length(ep);
 
-    // A faint ripple across the glass, so the reflection breathes rather than
-    // sitting dead still. It warps the coordinate the reflection is read from.
-    float rip = fbm(ep * 3.5 + vec2(uTime * 0.05, -uTime * 0.04));
-    float v = clamp(vUv.y + (rip - 0.5) * 0.05, 0.0, 1.0);
+    // Spiral the mirror into a vortex as the camera bears down on it. The twist
+    // tightens toward the centre (1.0 - e) and builds with uSpin (0 on the vista,
+    // climbing through the approach and the push-through), turning over on uTime so
+    // it is a live whirlpool rather than a frozen curl.
+    float ang = atan(ep.y, ep.x);
+    float twist = (uSpin * 6.5 + uTime * 0.9) * (1.0 - clamp(e, 0.0, 1.0));
+    ang += twist;
+    vec2 sp = vec2(cos(ang), sin(ang)) * e;
+    vec2 suv = sp * 0.5 + 0.5;
+
+    // A faint ripple across the glass, dragged around the swirl so the reflection
+    // is pulled into the spiral rather than sitting dead still.
+    float rip = fbm(sp * 3.5 + vec2(uTime * 0.05, -uTime * 0.04));
+    float v = clamp(suv.y + (rip - 0.5) * 0.05, 0.0, 1.0);
 
     // The reflected world: grass at the foot, a bright seam of horizon across the
     // middle, cool sky up top. A mirror standing in a field would show exactly
@@ -104,7 +115,7 @@ const PORTAL_FRAG = /* glsl */ `
     col += vec3(1.0) * smoothstep(0.09, 0.0, abs(band)) * 0.22;
 
     // A sparse sparkle of reflected light riding the ripple crests.
-    float glint = smoothstep(0.72, 0.95, fbm(ep * 6.0 - uTime * 0.08));
+    float glint = smoothstep(0.72, 0.95, fbm(sp * 6.0 - uTime * 0.08));
     col += vec3(0.92, 0.96, 1.0) * glint * 0.14;
 
     // A lit lip of glass right around the ellipse, catching the daylight.
@@ -152,6 +163,7 @@ export default function DesertDoor({
         uniforms: {
           uForm: { value: 0 },
           uTime: { value: 0 },
+          uSpin: { value: 0 },
           uEllipse: { value: new THREE.Vector2(EX, EY) },
         },
       }),
@@ -203,8 +215,16 @@ export default function DesertDoor({
     }
 
     const now = state.clock.getElapsedTime();
+    // Spiral builds through the approach and keeps winding through the push, so it
+    // is fiercest right as the swarm pours in and the lens goes through.
+    const spin = nowRef
+      ? approachP(nowRef.current) + throughCamQ(nowRef.current)
+      : open
+        ? 1
+        : 0;
     portalMat.uniforms.uForm.value = form;
     portalMat.uniforms.uTime.value = now;
+    portalMat.uniforms.uSpin.value = spin;
     shadowMat.uniforms.uForm.value = form;
 
     // Hold the oval at a steady on-screen size as the camera eases in. The final

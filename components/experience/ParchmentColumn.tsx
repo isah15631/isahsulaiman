@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { HOBBIES, type Hobby } from "@/lib/content";
 
 // A column of open parchments hanging in the dark, lit only by the one fixed
-// torch — the shared body behind both Digressions and Projects.
+// torch — the shared reading body behind About, Projects and Contact.
 //
 // There are no winged scrolls to pick from. Every page is already open and they
 // are simply lined up down the wall, and all but one of them is dark — because
@@ -21,8 +20,8 @@ import { HOBBIES, type Hobby } from "@/lib/content";
 // exactly that height.
 //
 // The sheet and the lighting are content-agnostic: ParchmentColumn lights
-// whatever pages you hand it, so Digressions fills them with hobbies and Projects
-// fills them with builds, both reading under the same flame.
+// whatever pages you hand it, so each section fills them with its own reading and
+// they all read under the same flame.
 
 /** Per-page lighting: how far out of the dark it is, and where the pool falls on
  *  it (as a percentage down the page, so the band can be placed there). */
@@ -152,9 +151,9 @@ export function Parchment({ lit, children }: { lit: Lit; children: ReactNode }) 
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              `radial-gradient(ellipse 100% 62% at 50% ${gy}%, ` +
-              "transparent 0%, transparent 32%, rgba(8,6,4,0.62) 60%, " +
-              "rgba(8,6,4,0.9) 84%)",
+              `radial-gradient(ellipse 104% 72% at 50% ${gy}%, ` +
+              "transparent 0%, transparent 44%, rgba(8,6,4,0.5) 68%, " +
+              "rgba(8,6,4,0.82) 90%)",
             opacity: amount,
           }}
         />
@@ -251,45 +250,5 @@ export function ParchmentColumn({ sheets }: { sheets: Sheet[] }) {
         </div>
       ))}
     </div>
-  );
-}
-
-// Digressions: the hobbies, each on its own sheet down the wall.
-export default function Digressions() {
-  const sheets: Sheet[] = HOBBIES.map((h) => ({
-    key: h.key,
-    content: <HobbyPage hobby={h} />,
-  }));
-  return <ParchmentColumn sheets={sheets} />;
-}
-
-function HobbyPage({ hobby }: { hobby: Hobby }) {
-  return (
-    <>
-      <h3 className="font-serif text-3xl font-light tracking-wide text-[#2a2017]">
-        {hobby.title}
-      </h3>
-      <p className="mt-3 max-w-prose font-serif text-[15px] italic leading-relaxed text-[#5b4a33]">
-        {hobby.intro}
-      </p>
-
-      {hobby.lists?.map((list) => (
-        <div key={list.label} className="mt-8">
-          <p className="mb-3 font-sans text-[10px] uppercase tracking-[0.24em] text-[#8a7248]">
-            {list.label}
-          </p>
-          <ul className="flex flex-col">
-            {list.items.map((item) => (
-              <li
-                key={item}
-                className="border-b border-[#2a2017]/10 py-[7px] font-serif text-[16px] leading-snug text-[#33271b] last:border-b-0"
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </>
   );
 }

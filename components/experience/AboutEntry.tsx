@@ -183,7 +183,7 @@ function RoomWalls({ near }: { near: boolean }) {
 // out of anything. Once the camera has dollied in, the reading inks itself
 // straight onto that same sheet. The bail bolted to the brick, the tack at each
 // top corner, the deckled edge, worn border, grain and torch-warmth are the same
-// reading as the parchments in Digressions.
+// reading as the section parchments (see ParchmentColumn).
 
 /** Uneven, as a hand-trimmed sheet is. */
 const P_RADIUS = "8px 12px 9px 11px / 12px 8px 13px 10px";
@@ -202,11 +202,11 @@ const PAPER_GRAIN =
 const P_DECKLE =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='520' viewBox='0 0 400 520' preserveAspectRatio='none'%3E%3Cfilter id='d' x='-20' y='-20' width='440' height='560' filterUnits='userSpaceOnUse'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.018 0.028' numOctaves='2' seed='7' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='10'/%3E%3C/filter%3E%3Crect x='6' y='6' width='388' height='508' rx='8' fill='%23fff' filter='url(%23d)'/%3E%3C/svg%3E\")";
 
-// The torch's light on the page, as in Digressions but hung the other way up: the
-// flame is carried ABOVE the sheet (the torch leans up and aside), so the pool
-// falls on the TOP of the parchment and the page sinks into dark toward its foot,
-// rather than Digressions' fixed band lit from a torch that sits below. The pool
-// is biased a touch left, toward where the torch is carried.
+// The torch's light on the page, as in the section parchments but hung the other
+// way up: the flame is carried ABOVE the sheet (the torch leans up and aside), so
+// the pool falls on the TOP of the parchment and the page sinks into dark toward
+// its foot, rather than the ParchmentColumn's fixed band lit from a torch that
+// sits below. The pool is biased a touch left, toward where the torch is carried.
 //
 // WARM is screen-blended firelight caught in the fibres; AMBER is an overlay wash
 // so the paper turns honey-warm rather than merely brighter; DARK_FOOT is the
@@ -401,7 +401,7 @@ function WallParchment({ near, gone }: { near: boolean; gone: boolean }) {
 // It is lit exactly like the wall sheet: the torch's pool warms the TOP of the
 // page (WARM/AMBER, under the ink so the fibres glow) and the foot falls away into
 // dark (DARK_FOOT, over the ink so words scrolled below the pool sit out of the
-// light) — Digressions' firelit page, hung the other way up.
+// light) — the section's firelit page, hung the other way up.
 function ReadingPanel() {
   return (
     <motion.div

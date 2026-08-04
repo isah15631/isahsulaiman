@@ -10,19 +10,16 @@ import { createPortal } from "react-dom";
 import { ABOUT, PROJECTS, CONTACT, STACK } from "@/lib/content";
 import BrickWall from "./BrickWall";
 import Companion from "./Companion";
-import Digressions, { ParchmentColumn, type Sheet } from "./Digressions";
 import FireButterfly from "./FireButterfly";
+import { ParchmentColumn, type Sheet } from "./ParchmentColumn";
 import PortraitFrame from "./PortraitFrame";
 import RoomButterflies from "./RoomButterflies";
 import Torch from "./Torch";
 
-type SectionKey = "about" | "projects" | "hobbies" | "contact";
+type SectionKey = "about" | "projects" | "contact";
 const MENU: { key: SectionKey; label: string }[] = [
   { key: "about", label: "About" },
   { key: "projects", label: "Projects" },
-  // The key stays "hobbies" — it is wired to a section, a palette slot and a
-  // dev route, and none of those are what a visitor reads.
-  { key: "hobbies", label: "Digressions" },
   { key: "contact", label: "Contact" },
 ];
 
@@ -294,14 +291,13 @@ export default function Sections({
             >
               <button
                 onClick={back}
-                className="mb-16 font-sans text-sm tracking-widest text-neutral-500 transition-colors hover:text-ember"
+                className="mb-16 font-sans text-sm tracking-widest text-neutral-400 transition-colors hover:text-ember"
               >
                 ← back
               </button>
 
               {selected === "about" && <About />}
               {selected === "projects" && <Projects />}
-              {selected === "hobbies" && <Hobbies />}
               {selected === "contact" && <Contact />}
             </motion.section>
           </motion.div>
@@ -331,13 +327,13 @@ function AboutPage() {
         <PortraitFrame src={ABOUT.photo} alt={ABOUT.name} />
       </div>
 
-      <h3 className="font-serif text-3xl font-light tracking-wide text-[#2a2017]">
+      <h3 className="font-serif text-3xl font-normal tracking-wide text-[#241a11]">
         {ABOUT.name}
       </h3>
-      <p className="mt-1 font-sans text-[11px] uppercase tracking-[0.2em] text-[#9a5a2a]">
+      <p className="mt-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7a3d10]">
         {ABOUT.role}
       </p>
-      <p className="mt-5 max-w-prose font-serif text-[15px] leading-relaxed text-[#463724]">
+      <p className="mt-5 max-w-prose font-serif text-[17px] leading-[1.75] text-[#2f2213]">
         {ABOUT.bio}
       </p>
 
@@ -346,17 +342,17 @@ function AboutPage() {
       <div className="mt-8 flex flex-col gap-4">
         {STACK.map((g) => (
           <div key={g.group}>
-            <p className="mb-1 font-sans text-[10px] uppercase tracking-[0.24em] text-[#8a7248]">
+            <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5c451c]">
               {g.group}
             </p>
-            <p className="font-sans text-[13px] leading-relaxed text-[#5b4a33]">
+            <p className="font-sans text-[15px] leading-relaxed text-[#2f2213]">
               {g.items.join(" · ")}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-sans text-sm tracking-wide">
+      <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-sans text-[15px] tracking-wide">
         {ABOUT.socials.map((s) => {
           const external = s.href.startsWith("http");
           return (
@@ -366,7 +362,7 @@ function AboutPage() {
               {...(external
                 ? { target: "_blank", rel: "noreferrer noopener" }
                 : {})}
-              className="text-[#5b4a33] transition-colors hover:text-[#8a3f16]"
+              className="text-[#3f2f1a] transition-colors hover:text-[#8a3f16]"
             >
               {s.label}
             </a>
@@ -377,10 +373,10 @@ function AboutPage() {
   );
 }
 
-// Projects reads exactly like Digressions now: a column of already-open
-// parchments hanging down the wall, each build on its own sheet, and only the one
-// scrolled under the torch is lit enough to read. No <Heading> and no reveal
-// motion — the flame arriving on the page is the reveal, same as the hobbies.
+// Projects is a column of already-open parchments hanging down the wall, each
+// build on its own sheet, and only the one scrolled under the torch is lit enough
+// to read. No <Heading> and no reveal motion — the flame arriving on the page is
+// the reveal.
 function Projects() {
   const sheets: Sheet[] = PROJECTS.map((p) => ({
     key: p.title,
@@ -395,20 +391,20 @@ function ProjectPage({ project: p }: { project: (typeof PROJECTS)[number] }) {
       {/* the tag it carries, on a lead-in rule, in ink rather than ember now
           that it lives on lit paper */}
       <div className="mb-3 flex items-center gap-3">
-        <span className="block h-px w-7 bg-[#9a5a2a]/70" />
-        <p className="font-sans text-[10px] uppercase tracking-[0.24em] text-[#8a7248]">
+        <span className="block h-px w-7 bg-[#8a4a1f]/80" />
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5c451c]">
           {p.tag}
-          {p.year && <span className="text-[#a98d5e]"> · {p.year}</span>}
+          {p.year && <span className="text-[#7a5f30]"> · {p.year}</span>}
         </p>
       </div>
-      <h3 className="font-serif text-3xl font-light tracking-wide text-[#2a2017]">
+      <h3 className="font-serif text-3xl font-normal tracking-wide text-[#241a11]">
         {p.title}
       </h3>
-      <p className="mt-3 max-w-prose font-serif text-[15px] leading-relaxed text-[#463724]">
+      <p className="mt-3 max-w-prose font-serif text-[17px] leading-[1.75] text-[#2f2213]">
         {p.story}
       </p>
       {p.notes && (
-        <p className="mt-3 max-w-prose font-serif text-[14px] italic leading-relaxed text-[#6f5c3e]">
+        <p className="mt-3 max-w-prose font-serif text-[15px] italic leading-relaxed text-[#4d3c24]">
           {p.notes}
         </p>
       )}
@@ -418,7 +414,7 @@ function ProjectPage({ project: p }: { project: (typeof PROJECTS)[number] }) {
           {p.stack?.map((t) => (
             <span
               key={t}
-              className="rounded-full border border-[#2a2017]/25 px-3 py-1 font-sans text-xs tracking-wide text-[#5b4a33]"
+              className="rounded-full border border-[#2a2017]/40 px-3 py-1 font-sans text-[13px] tracking-wide text-[#3f2f1a]"
             >
               {t}
             </span>
@@ -429,7 +425,7 @@ function ProjectPage({ project: p }: { project: (typeof PROJECTS)[number] }) {
               href={p.href}
               target="_blank"
               rel="noreferrer noopener"
-              className="ml-2 font-sans text-xs tracking-widest text-[#8a3f16] transition-opacity hover:opacity-70"
+              className="ml-2 font-sans text-[13px] font-medium tracking-widest text-[#8a3f16] transition-opacity hover:opacity-70"
             >
               visit →
             </a>
@@ -438,16 +434,6 @@ function ProjectPage({ project: p }: { project: (typeof PROJECTS)[number] }) {
       )}
     </>
   );
-}
-
-// Digressions is no longer a shelf of winged scrolls you pick one from. It is a
-// column of already-open parchments hanging down the wall in the dark, and the
-// one you have scrolled over the torch is the only one you can read. The whole
-// behaviour lives in the Digressions component; the section just hands it the
-// space. No <Heading>, because the reading here is the parchments themselves and
-// a bright title over a dark room would break the one-flame mood.
-function Hobbies() {
-  return <Digressions />;
 }
 
 // Contact reads like the rest now: one open parchment lit by the torch, the
@@ -470,7 +456,7 @@ function Contact() {
 
   const content = (
     <>
-      <p className="max-w-prose font-serif text-[15px] leading-relaxed text-[#463724]">
+      <p className="max-w-prose font-serif text-[17px] leading-[1.75] text-[#2f2213]">
         {CONTACT.invitation}
       </p>
 
@@ -491,7 +477,7 @@ function Contact() {
       <div className="mt-4 h-5">
         <button
           onClick={copy}
-          className="font-sans text-xs tracking-widest text-[#8a7248] transition-colors hover:text-[#8a3f16]"
+          className="font-sans text-[12px] font-medium tracking-widest text-[#5c451c] transition-colors hover:text-[#8a3f16]"
         >
           {copied ? "copied." : "copy address"}
         </button>
@@ -502,7 +488,7 @@ function Contact() {
       <p className="mt-8 font-serif text-lg font-light tracking-wide sm:text-xl">
         <a
           href={CONTACT.phoneHref}
-          className="group inline-block text-[#463724] transition-colors duration-500 hover:text-[#8a3f16]"
+          className="group inline-block text-[#2f2213] transition-colors duration-500 hover:text-[#8a3f16]"
         >
           {CONTACT.phone}
           <span className="relative mt-2 block h-px w-full bg-[#2a2017]/20">
@@ -511,7 +497,7 @@ function Contact() {
         </a>
       </p>
 
-      <div className="mt-14 flex flex-wrap gap-x-8 gap-y-3 font-sans text-sm">
+      <div className="mt-14 flex flex-wrap gap-x-8 gap-y-3 font-sans text-[15px]">
         {CONTACT.socials.map((s) => (
           <a
             key={s.label}

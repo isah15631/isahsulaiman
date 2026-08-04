@@ -65,7 +65,7 @@ function Ink({
 
 // The Projects reading, inked onto the sheet the wall's centre turned into. Each project
 // is a lead-in rule and tag, its title, the story, and its stack — the same hand
-// as the Digressions and About parchments.
+// as the About parchment and the section column (see ParchmentColumn).
 function ProjectsInk() {
   return (
     <div className="relative px-7 py-12 sm:px-10 sm:py-14">

@@ -35,8 +35,9 @@ type ButterflyProps = {
 
 // Right-hand wings, drawn in a 100×100 box with the body along x = 50.
 //
-// Exported because the hobbies wear these too. A book with wings only works if
-// they are recognisably the swarm's wings and not a second, similar pair.
+// Exported because the room butterflies, the leaders, the torches and the fire
+// butterfly all wear these too. A winged thing only works if the wings are
+// recognisably the swarm's and not a second, similar pair.
 export const FOREWING =
   "M50,44 C54,26 66,10 80,6 C92,3 97,14 94,28 C90,44 72,54 56,52 Z";
 export const HINDWING =

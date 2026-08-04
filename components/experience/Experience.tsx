@@ -18,10 +18,10 @@ type Phase = "fall" | "eruption" | "welcome" | "sections";
  * crash, the swarm streaming to the door, the pull back to the vista, the walk
  * in, and the push through the door. The approach and the through-to-black are
  * scripted on the same clock inside lib/approach (the through finishes about
- * impact+7s), so this only has to know when the black has closed and it is safe
+ * impact+5.9s), so this only has to know when the black has closed and it is safe
  * to hand over to the dark interior.
  */
-const THROUGH_DONE = 7200;
+const THROUGH_DONE = 6100;
 
 export default function Experience() {
   const [phase, setPhase] = useState<Phase>("fall");
