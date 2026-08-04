@@ -224,6 +224,7 @@ export const HOBBIES: Hobby[] = [
     key: "football",
     title: "The Beautiful Game",
     intro: "The game.",
+    lists: [{ label: "Club", items: ["Real Madrid"] }],
   },
   {
     key: "gaming",
@@ -265,18 +266,18 @@ export const HOBBIES: Hobby[] = [
   },
   {
     key: "systems",
-    title: "System Design",
+    title: "Architecting Systems",
     intro:
       "Boxes and arrows, moved around until the whole thing holds together.",
   },
   {
     key: "reflection",
-    title: "Self Reflection",
+    title: "Inner Dialogues",
     intro: "Sitting with the day before it turns into the next one.",
   },
   {
     key: "movies",
-    title: "Movies",
+    title: "Cinematic Inclinations",
     intro:
       "Two hours, in the dark, with the phone face down. Mind bending, psychological, adventure packed: the kind you are still turning over on the walk home.",
     lists: [
@@ -384,8 +385,25 @@ export const HOBBIES: Hobby[] = [
   },
   {
     key: "anime",
-    title: "Anime",
+    title: "Animated Realms",
     intro: "Drawn, and somehow the more real for it.",
+    lists: [
+      {
+        label: "Series",
+        items: [
+          "One Piece",
+          "Death Note",
+          "Arcane",
+          "Attack on Titan",
+          "Jujutsu Kaisen",
+          "Demon Slayer",
+          "Mob Psycho 100",
+          "Spy x Family",
+          "Vinland Saga",
+          "Tokyo Ghoul",
+        ],
+      },
+    ],
   },
 ];
 
