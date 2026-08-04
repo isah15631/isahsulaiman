@@ -184,7 +184,7 @@ export type Hobby = {
 export const HOBBIES: Hobby[] = [
   {
     key: "reading",
-    title: "Reading",
+    title: "Literary Exploration",
     intro: "The writers I keep going back to, and the books that sent me back.",
     lists: [
       {
@@ -217,17 +217,17 @@ export const HOBBIES: Hobby[] = [
   },
   {
     key: "writing",
-    title: "Writing",
+    title: "Thought Journaling",
     intro: "Putting it down in words, which is a different kind of thinking.",
   },
   {
     key: "football",
-    title: "Football",
+    title: "The Beautiful Game",
     intro: "The game.",
   },
   {
     key: "gaming",
-    title: "Gaming",
+    title: "Virtual Odysseys",
     intro:
       "Long campaigns, mostly. The ones you finish and then miss for a week.",
     lists: [
