@@ -8,7 +8,7 @@ import {
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ABOUT, PROJECTS, CONTACT, STACK } from "@/lib/content";
-import BrickWall from "./BrickWall";
+import GrottoWall from "./GrottoWall";
 import Companion from "./Companion";
 import FireButterfly from "./FireButterfly";
 import { ParchmentColumn, type Sheet } from "./ParchmentColumn";
@@ -140,8 +140,9 @@ export default function Sections({
     // is falling past the other they would otherwise share a scrollbar and
     // fight over its height.
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#070504] text-neutral-200">
-      {/* the wall the torch is strapped to, at the very back of the room. */}
-      <BrickWall />
+      {/* the wall the torch is strapped to, at the very back of the room: a wet
+          grotto wall beneath the lake, moonlight caustics crawling across it. */}
+      <GrottoWall lit={lit} />
 
       {/* The torch is a fixture of the room, not of the menu. It is mounted here,
           at the room root and outside the panes that slide, so it stays nailed to
