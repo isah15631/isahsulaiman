@@ -36,15 +36,21 @@ const FALLOFF = 190;
 const RADIUS = "8px 12px 9px 11px / 12px 8px 13px 10px";
 
 /** The lift off the wall, cast by the container box behind the ragged sheet. */
-const LIFT = "0 34px 64px -34px rgba(0,0,0,0.9)";
+const LIFT = "0 34px 64px -34px rgba(0,0,0,0.92)";
 
-/** Aged paper: a warm, mottled tone. The lighting is the glow/warmth layers'
- *  job, so the base is not baked dark on one side. */
-const PAPER =
-  "radial-gradient(120% 80% at 26% 10%, rgba(255,251,232,0.55), transparent 58%)," +
-  "radial-gradient(90% 70% at 82% 88%, rgba(120,88,48,0.20), transparent 55%)," +
-  "radial-gradient(70% 60% at 88% 16%, rgba(150,116,66,0.16), transparent 60%)," +
-  "linear-gradient(178deg, #efe1bd 0%, #e7d4a6 46%, #dbc492 78%, #cdb47f 100%)";
+/** Wet slate: a cool near-black stone slab, mottled, with a faint sheen top-left
+ *  where it catches the light. The reading warmth is the torch layers' job, so the
+ *  base stays dark. It belongs in the grotto the way aged paper never could. */
+const SLATE =
+  "radial-gradient(120% 80% at 28% 8%, rgba(120,140,155,0.16), transparent 55%)," +
+  "radial-gradient(90% 70% at 82% 92%, rgba(4,8,12,0.55), transparent 58%)," +
+  "linear-gradient(178deg, #262d34 0%, #1c232a 48%, #141a20 80%, #0f151a 100%)";
+
+/** Carved, not inked: a dark cut below each letter and a faint lit lip above, so
+ *  the words read as incised into the stone and caught by the fire. Inherited by
+ *  every bit of text on the slab. */
+const CARVE =
+  "0 1px 1px rgba(0,0,0,0.6), 0 -1px 0.5px rgba(255,232,196,0.14)";
 
 // A faint paper grain, as a static inline-SVG noise. Cheap: one small tiled
 // image, not a live filter.
@@ -85,63 +91,67 @@ export function Parchment({ lit, children }: { lit: Lit; children: ReactNode }) 
           maskRepeat: "no-repeat",
         }}
       >
-        {/* the paper: tone, worn border and darkened aged edges */}
+        {/* the slab: cool stone tone, a wet top catch and dark hewn edges */}
         <div
           className="absolute inset-0"
           style={{
             borderRadius: RADIUS,
-            background: PAPER,
-            border: "1px solid rgba(96,70,38,0.55)",
+            background: SLATE,
+            border: "1px solid rgba(150,170,185,0.14)",
             boxShadow:
-              "inset 0 0 0 1px rgba(255,246,222,0.25)," +
-              "inset 0 22px 30px -22px rgba(74,52,26,0.7)," +
-              "inset 0 -22px 30px -22px rgba(74,52,26,0.7)," +
-              "inset 22px 0 26px -22px rgba(74,52,26,0.65)," +
-              "inset -22px 0 26px -22px rgba(74,52,26,0.65)",
+              "inset 0 1px 0 rgba(180,200,215,0.16)," +
+              "inset 0 -26px 34px -24px rgba(0,0,0,0.75)," +
+              "inset 0 24px 30px -26px rgba(0,0,0,0.5)," +
+              "inset 22px 0 26px -22px rgba(0,0,0,0.5)," +
+              "inset -22px 0 26px -22px rgba(0,0,0,0.5)",
           }}
         />
-        {/* the grain */}
+        {/* the stone pitting */}
         <div
           className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage: GRAIN,
             backgroundSize: "170px 170px",
             mixBlendMode: "multiply",
-            opacity: 0.05,
+            opacity: 0.14,
           }}
         />
 
-        {/* the torch's light on the paper, screen-blended so it reads as
-            firelight in the fibres. Kept a warm amber, NOT a pale near-white
-            core — a whiter highlight bleaches the paper and reads cold. */}
+        {/* the torch's light on the stone, screen-blended so it lifts the dark
+            slate into warm firelight in the reading band. A wash of amber that
+            fades to nothing off the pool, so only the band under the flame warms. */}
         <div
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              `radial-gradient(ellipse 96% 56% at 50% ${gy}%, ` +
-              "rgba(255,198,116,0.82) 0%, rgba(255,158,72,0.55) 34%, " +
-              "rgba(255,120,40,0.24) 60%, transparent 80%)",
+              `radial-gradient(ellipse 100% 60% at 50% ${gy}%, ` +
+              "rgba(255,196,120,0.80) 0%, rgba(255,150,70,0.50) 34%, " +
+              "rgba(230,110,40,0.22) 62%, transparent 82%)",
             mixBlendMode: "screen",
             opacity: amount,
           }}
         />
-        {/* a deep amber wash over the paper itself, so the sheet turns the honey
-            warmth of firelit paper rather than merely getting brighter. Overlay
-            pushes the cream tone toward orange instead of washing it out; run a
-            little hotter than the glow so the warmth wins over the brightness. */}
+        {/* a hotter gold core, tight, so the very middle of the band glows the way
+            firelit wet stone does rather than merely brightening flat. Screen, not
+            overlay: overlay only darkens a base this dark. */}
         <div
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              `radial-gradient(ellipse 106% 64% at 50% ${gy}%, ` +
-              "rgba(255,112,28,0.9) 0%, rgba(222,98,26,0.6) 40%, " +
-              "rgba(180,80,24,0.24) 66%, transparent 82%)",
-            mixBlendMode: "overlay",
+              `radial-gradient(ellipse 70% 42% at 50% ${gy}%, ` +
+              "rgba(255,226,172,0.55) 0%, rgba(255,196,120,0.18) 45%, transparent 72%)",
+            mixBlendMode: "screen",
             opacity: amount,
           }}
         />
 
-        <div className="relative px-8 py-10 sm:px-11">{children}</div>
+        {/* the reading itself, carved into the stone by default */}
+        <div
+          className="relative px-8 py-10 sm:px-11"
+          style={{ textShadow: CARVE }}
+        >
+          {children}
+        </div>
 
         {/* Even the page under the torch is only lit where the light falls: this
             clears a readable pool at the flame's height and lets the rest of the
@@ -152,15 +162,15 @@ export function Parchment({ lit, children }: { lit: Lit; children: ReactNode }) 
           style={{
             background:
               `radial-gradient(ellipse 104% 72% at 50% ${gy}%, ` +
-              "transparent 0%, transparent 44%, rgba(8,6,4,0.5) 68%, " +
-              "rgba(8,6,4,0.82) 90%)",
+              "transparent 0%, transparent 44%, rgba(6,10,14,0.55) 68%, " +
+              "rgba(5,8,11,0.86) 90%)",
             opacity: amount,
           }}
         />
-        {/* a page the torch is not over at all is fully dark — still there in the
-            gloom, waiting for the fire. */}
+        {/* a slab the torch is not over at all is fully dark — wet stone still
+            there in the gloom, waiting for the fire. */}
         <div
-          className="pointer-events-none absolute inset-0 bg-[#080604]"
+          className="pointer-events-none absolute inset-0 bg-[#0a0f13]"
           style={{ opacity: 0.9 * (1 - amount) }}
         />
       </div>

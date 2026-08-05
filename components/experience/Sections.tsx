@@ -23,66 +23,54 @@ const MENU: { key: SectionKey; label: string }[] = [
   { key: "contact", label: "Contact" },
 ];
 
-// The room is above and the sections are below it, and you move between them
-// vertically. Opening one is a drop: it rushes up from under you while the
-// menu rises out of the top of the frame. Going back is the climb, and because
-// the lamp lives in the menu, the whole fixture descends into view again.
+// Moving between the menu and a section is not a fall any more, it is going
+// DEEPER into the grotto. Picking a section pushes you forward: the menu you
+// leave swells and blurs as it passes the lens, and the section rushes up out of
+// the dark ahead and settles into focus. Going back pulls you out the same way in
+// reverse. Both panes are on screen together for the length of it, one receding
+// and one arriving, so it reads as one continuous move through the dark rather
+// than two slides.
 //
-// Both panes are on screen together for the length of it, which is the whole
-// point. Wait for one to leave before the other arrives and it stops being a
-// fall and becomes two slides.
-//
-// Percentages, not viewport units: each pane is `absolute inset-0`, so 100% is
-// exactly one screen however tall the phone chrome makes that today.
-//
-// GAP is the distance between the room and a section, and it is the whole
-// reason this has any weight. At 100% they are flush, so nothing ever travels
-// further than the screen you can already see and a fast transition just looks
-// abrupt. Further apart, there is dark between the two, and for most of the
-// drop that dark is all you can see. You fall past nothing to get somewhere.
-const GAP = 170;
-// A small settle at the end, as a fraction of a screen rather than of GAP, so
-// the landing lands the same however far the fall was.
-const OVER = 1.6;
+// `into` is the direction: true going deeper into a section, false backing out.
+// Depth is faked with scale, blur and fade rather than real perspective, which is
+// enough to read as a dolly through the cave.
+const FAR = 0.72; // the small scale of a pane deep in the dark ahead
+const NEAR = 1.35; // the large scale of a pane passing the lens
+const BLUR = 7; // px of defocus at either far end of the move
 
-// Both panes are rigid parts of one world and it is the camera that moves, so
-// they share a curve exactly. Give them different easings and the world
-// stretches between them, which is instantly wrong however good it looks
-// frame by frame.
-const TRAVEL: [number, number, number, number] = [0.5, 0, 0.15, 1];
-const SETTLE: [number, number, number, number] = [0.4, 0, 0.4, 1];
-
-const FALL = {
-  duration: 0.62,
-  times: [0, 0.85, 1],
-  ease: [TRAVEL, SETTLE],
-};
-const RISE = {
-  duration: 0.82,
-  times: [0, 0.85, 1],
-  ease: [TRAVEL, SETTLE],
+const DEPTH = {
+  duration: 0.72,
+  ease: [0.5, 0, 0.2, 1] as [number, number, number, number],
 };
 
-// The overshoot runs against the direction of travel: falling, everything
-// carries a little past where it stops and comes back.
 const room: Variants = {
-  enter: (down: boolean) => ({ y: `${down ? GAP : -GAP}%` }),
-  center: (down: boolean) => ({
-    y: down
-      ? [`${GAP}%`, `${-OVER}%`, "0%"]
-      : [`${-GAP}%`, `${OVER}%`, "0%"],
-    transition: down ? FALL : RISE,
+  // arriving: going deeper comes up from FAR ahead; backing out comes from NEAR,
+  // as the menu drops back in front of the lens
+  enter: (into: boolean) => ({
+    scale: into ? FAR : NEAR,
+    opacity: 0,
+    filter: `blur(${BLUR}px)`,
   }),
-  leave: (down: boolean) => ({
-    y: down
-      ? ["0%", `${-GAP - OVER}%`, `${-GAP}%`]
-      : ["0%", `${GAP + OVER}%`, `${GAP}%`],
-    transition: down ? FALL : RISE,
+  center: {
+    scale: 1,
+    opacity: 1,
+    filter: "blur(0px)",
+    transition: DEPTH,
+  },
+  // leaving: going deeper sends the menu to NEAR, past the lens; backing out sends
+  // the section to FAR, receding into the dark
+  leave: (into: boolean) => ({
+    scale: into ? NEAR : FAR,
+    opacity: 0,
+    filter: `blur(${BLUR}px)`,
+    transition: DEPTH,
   }),
 };
 
-/** Each pane owns its own scrolling, so neither can disturb the other's. */
-const PANE = "absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar";
+/** Each pane owns its own scrolling, so neither can disturb the other's. The
+ *  origin is centred so the depth scale grows from the middle toward the lens. */
+const PANE =
+  "absolute inset-0 origin-center overflow-y-auto overflow-x-hidden no-scrollbar";
 
 export default function Sections({
   ignited,
@@ -328,13 +316,13 @@ function AboutPage() {
         <PortraitFrame src={ABOUT.photo} alt={ABOUT.name} />
       </div>
 
-      <h3 className="font-serif text-3xl font-normal tracking-wide text-[#241a11]">
+      <h3 className="font-serif text-3xl font-normal tracking-wide text-[#ece0c4]">
         {ABOUT.name}
       </h3>
-      <p className="mt-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7a3d10]">
+      <p className="mt-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-[#e0965a]">
         {ABOUT.role}
       </p>
-      <p className="mt-5 max-w-prose font-serif text-[17px] leading-[1.75] text-[#2f2213]">
+      <p className="mt-5 max-w-prose font-serif text-[17px] leading-[1.75] text-[#cbbf9e]">
         {ABOUT.bio}
       </p>
 
@@ -343,10 +331,10 @@ function AboutPage() {
       <div className="mt-8 flex flex-col gap-4">
         {STACK.map((g) => (
           <div key={g.group}>
-            <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5c451c]">
+            <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b79a66]">
               {g.group}
             </p>
-            <p className="font-sans text-[15px] leading-relaxed text-[#2f2213]">
+            <p className="font-sans text-[15px] leading-relaxed text-[#cbbf9e]">
               {g.items.join(" · ")}
             </p>
           </div>
@@ -363,7 +351,7 @@ function AboutPage() {
               {...(external
                 ? { target: "_blank", rel: "noreferrer noopener" }
                 : {})}
-              className="text-[#3f2f1a] transition-colors hover:text-[#8a3f16]"
+              className="text-[#cbbf9e] transition-colors hover:text-[#e0965a]"
             >
               {s.label}
             </a>
@@ -392,20 +380,20 @@ function ProjectPage({ project: p }: { project: (typeof PROJECTS)[number] }) {
       {/* the tag it carries, on a lead-in rule, in ink rather than ember now
           that it lives on lit paper */}
       <div className="mb-3 flex items-center gap-3">
-        <span className="block h-px w-7 bg-[#8a4a1f]/80" />
-        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5c451c]">
+        <span className="block h-px w-7 bg-[#b8935a]/80" />
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b79a66]">
           {p.tag}
-          {p.year && <span className="text-[#7a5f30]"> · {p.year}</span>}
+          {p.year && <span className="text-[#a68a58]"> · {p.year}</span>}
         </p>
       </div>
-      <h3 className="font-serif text-3xl font-normal tracking-wide text-[#241a11]">
+      <h3 className="font-serif text-3xl font-normal tracking-wide text-[#ece0c4]">
         {p.title}
       </h3>
-      <p className="mt-3 max-w-prose font-serif text-[17px] leading-[1.75] text-[#2f2213]">
+      <p className="mt-3 max-w-prose font-serif text-[17px] leading-[1.75] text-[#cbbf9e]">
         {p.story}
       </p>
       {p.notes && (
-        <p className="mt-3 max-w-prose font-serif text-[15px] italic leading-relaxed text-[#4d3c24]">
+        <p className="mt-3 max-w-prose font-serif text-[15px] italic leading-relaxed text-[#a99a78]">
           {p.notes}
         </p>
       )}
@@ -415,7 +403,7 @@ function ProjectPage({ project: p }: { project: (typeof PROJECTS)[number] }) {
           {p.stack?.map((t) => (
             <span
               key={t}
-              className="rounded-full border border-[#2a2017]/40 px-3 py-1 font-sans text-[13px] tracking-wide text-[#3f2f1a]"
+              className="rounded-full border border-[#e6dcc4]/28 px-3 py-1 font-sans text-[13px] tracking-wide text-[#cbbf9e]"
             >
               {t}
             </span>
@@ -426,7 +414,7 @@ function ProjectPage({ project: p }: { project: (typeof PROJECTS)[number] }) {
               href={p.href}
               target="_blank"
               rel="noreferrer noopener"
-              className="ml-2 font-sans text-[13px] font-medium tracking-widest text-[#8a3f16] transition-opacity hover:opacity-70"
+              className="ml-2 font-sans text-[13px] font-medium tracking-widest text-[#e0965a] transition-opacity hover:opacity-70"
             >
               visit →
             </a>
@@ -457,7 +445,7 @@ function Contact() {
 
   const content = (
     <>
-      <p className="max-w-prose font-serif text-[17px] leading-[1.75] text-[#2f2213]">
+      <p className="max-w-prose font-serif text-[17px] leading-[1.75] text-[#cbbf9e]">
         {CONTACT.invitation}
       </p>
 
@@ -465,12 +453,12 @@ function Contact() {
       <div className="mt-10 inline-block font-serif text-2xl font-light sm:text-3xl">
         <a
           href={`mailto:${CONTACT.email}`}
-          className="group block tracking-wide text-[#2a2017] transition-colors duration-500 hover:text-[#8a3f16]"
+          className="group block tracking-wide text-[#ece0c4] transition-colors duration-500 hover:text-[#e0965a]"
         >
           {CONTACT.email}
           {/* The rule stays; a warm one is drawn along it from the left on hover. */}
-          <span className="relative mt-2 block h-px w-full bg-[#2a2017]/25">
-            <span className="absolute inset-0 origin-left scale-x-0 bg-[#8a3f16] transition-transform duration-500 ease-out group-hover:scale-x-100" />
+          <span className="relative mt-2 block h-px w-full bg-[#e6dcc4]/22">
+            <span className="absolute inset-0 origin-left scale-x-0 bg-[#e0965a] transition-transform duration-500 ease-out group-hover:scale-x-100" />
           </span>
         </a>
       </div>
@@ -478,7 +466,7 @@ function Contact() {
       <div className="mt-4 h-5">
         <button
           onClick={copy}
-          className="font-sans text-[12px] font-medium tracking-widest text-[#5c451c] transition-colors hover:text-[#8a3f16]"
+          className="font-sans text-[12px] font-medium tracking-widest text-[#b79a66] transition-colors hover:text-[#e0965a]"
         >
           {copied ? "copied." : "copy address"}
         </button>
@@ -489,11 +477,11 @@ function Contact() {
       <p className="mt-8 font-serif text-lg font-light tracking-wide sm:text-xl">
         <a
           href={CONTACT.phoneHref}
-          className="group inline-block text-[#2f2213] transition-colors duration-500 hover:text-[#8a3f16]"
+          className="group inline-block text-[#cbbf9e] transition-colors duration-500 hover:text-[#e0965a]"
         >
           {CONTACT.phone}
-          <span className="relative mt-2 block h-px w-full bg-[#2a2017]/20">
-            <span className="absolute inset-0 origin-left scale-x-0 bg-[#8a3f16] transition-transform duration-500 ease-out group-hover:scale-x-100" />
+          <span className="relative mt-2 block h-px w-full bg-[#e6dcc4]/18">
+            <span className="absolute inset-0 origin-left scale-x-0 bg-[#e0965a] transition-transform duration-500 ease-out group-hover:scale-x-100" />
           </span>
         </a>
       </p>
@@ -505,7 +493,7 @@ function Contact() {
             href={s.href}
             target="_blank"
             rel="noreferrer noopener"
-            className="text-[#5b4a33] transition-colors hover:text-[#8a3f16]"
+            className="text-[#cbbf9e] transition-colors hover:text-[#e0965a]"
           >
             {s.label}
           </a>
