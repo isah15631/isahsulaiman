@@ -3,17 +3,16 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
-import { throughCamQ } from "@/lib/approach";
+import { blackQ } from "@/lib/approach";
 
-// The dark the door opens onto, closing over the lens as the camera goes
-// through. Held right in front of the camera and drawn last, so it covers the
-// whole frame however the shot is composed, and driven by the same through
-// value as the camera move so the black arrives exactly as the doorway fills
-// the view.
+// The dark that closes over the water once the butterflies have fallen back in.
+// Held right in front of the camera and drawn last, so it covers the whole frame
+// however the shot is composed, and driven by the BLACK beat so it arrives as the
+// last ripple settles.
 //
-// This IS the cut. Both sides of it are black: the desert ends here and the
-// dark interior begins on the far side of it, so nothing has to line up across
-// the join because there is nothing to see across it.
+// This IS the cut. Both sides of it are black: the lake ends here and the dark
+// interior begins on the far side of it, so nothing has to line up across the
+// join because there is nothing to see across it.
 
 export default function BlackOut({
   nowRef,
@@ -30,12 +29,11 @@ export default function BlackOut({
       mesh.current.quaternion.copy(camera.quaternion);
       mesh.current.translateZ(-0.4);
     }
-    // Tied to the camera's own push (throughCamQ), and run ahead of it, so the
-    // black is fully closed by the time the lens reaches the doorway's dark
-    // interior plane. That is the fix for the flash of the snow world behind the
-    // door: the push now outpaces a gentle fade, so the fade has to lead it.
-    const q = throughCamQ(nowRef.current);
-    if (mat.current) mat.current.opacity = Math.min(1, q * 1.5);
+    // Driven by the BLACK beat: it starts closing as the butterflies settle back
+    // into the water and is fully shut by the time the canvas hands over to the
+    // dark interior.
+    const q = blackQ(nowRef.current);
+    if (mat.current) mat.current.opacity = q;
   });
 
   return (

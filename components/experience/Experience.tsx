@@ -9,19 +9,19 @@ import Sections from "./Sections";
 // three.js must never render on the server.
 const OrbScene = dynamic(() => import("./OrbScene"), { ssr: false });
 
-type Phase = "fall" | "eruption" | "welcome" | "sections";
+type Phase = "fall" | "sink" | "welcome" | "sections";
 
 /**
- * When the canvas can be dropped, in ms after the impact.
+ * When the canvas can be dropped, in ms after the moon meets the water.
  *
- * The canvas carries the whole outdoor act: the fall, the daylit landing, the
- * crash, the swarm streaming to the door, the pull back to the vista, the walk
- * in, and the push through the door. The approach and the through-to-black are
- * scripted on the same clock inside lib/approach (the through finishes about
- * impact+5.9s), so this only has to know when the black has closed and it is safe
- * to hand over to the dark interior.
+ * The canvas carries the whole outdoor act: the fall, the moonlit landing on the
+ * lake, the moon sinking, the plume rising and falling back into the water, and
+ * the black closing over. The ending is scripted on the same clock inside
+ * lib/approach (the black finishes closing about impact+2.8s), so this only has
+ * to know when the black has closed and it is safe to hand over to the dark
+ * interior.
  */
-const THROUGH_DONE = 6100;
+const THROUGH_DONE = 3000;
 
 export default function Experience() {
   const [phase, setPhase] = useState<Phase>("fall");
@@ -73,13 +73,13 @@ export default function Experience() {
 
   const onImpact = useCallback(() => {
     if (phaseRef.current !== "fall") return;
-    goPhase("eruption");
+    goPhase("sink");
 
-    // the swell carries the moment; the butterflies, the daylight and the dust
-    // are all the canvas's now
+    // the swell carries the moment; the sink, the plume and the butterflies are
+    // all the canvas's now
     after(200, () => playSwell());
 
-    // through the door, the black closed over: drop the canvas and let the dark
+    // the black has closed over the water: drop the canvas and let the dark
     // interior speak
     after(THROUGH_DONE, () => {
       setOrbGone(true);
@@ -105,11 +105,12 @@ export default function Experience() {
         transition: "filter 1.9s ease",
       }}
     >
-      {/* Space, the fall, the daylit landing, the swarm out of the break and into
-          the door, and the walk through it to black. All one scene and one
-          camera: the only cut in the whole piece is the black at the threshold,
-          where both sides are dark and nothing has to line up across it. */}
-      {(phase === "fall" || phase === "eruption") && !orbGone && (
+      {/* Space, the fall, the moonlit landing on the lake, the moon sinking, the
+          plume rising into two butterflies and falling back, and the black closing
+          over. All one scene and one camera: the only cut in the whole piece is
+          the black on the water, where both sides are dark and nothing has to line
+          up across it. */}
+      {(phase === "fall" || phase === "sink") && !orbGone && (
         <div className="absolute inset-0 z-10">
           <OrbScene onImpact={onImpact} />
         </div>

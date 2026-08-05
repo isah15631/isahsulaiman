@@ -11,8 +11,10 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { createOrbGeometry, ORB_RADIUS } from "@/lib/orbGeometry";
-import Floor from "@/components/experience/Floor";
 import Orb from "@/components/experience/Orb";
+import Water from "@/components/experience/Water";
+import Splash from "@/components/experience/Splash";
+import DaySky from "@/components/experience/DaySky";
 
 const FLOOR_Y = -1.6;
 const REST_Y = FLOOR_Y + ORB_RADIUS;
@@ -104,8 +106,10 @@ export default function DevOrb() {
         onCreated={({ camera }) => camera.lookAt(0, -0.2, 0)}
       >
         <Expose struck={struck} nowRef={nowRef} />
-        <Floor y={FLOOR_Y} struck={struck} />
+        <DaySky nowRef={nowRef} />
+        <Water nowRef={nowRef} />
         <Orb geometry={geometry} nowRef={nowRef} onImpact={() => setStruck(true)} />
+        <Splash nowRef={nowRef} />
       </Canvas>
     </div>
   );

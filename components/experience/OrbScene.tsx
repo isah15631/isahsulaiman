@@ -1,13 +1,11 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { PerspectiveCamera } from "three";
 import { createOrbGeometry } from "@/lib/orbGeometry";
-import type { ShardLaunch } from "@/lib/shards";
 import {
   EYE_Y,
-  FLOOR_Y,
   FOV,
   HALF_H,
   HALF_W,
@@ -15,27 +13,18 @@ import {
   SPACE_Y,
   camY,
 } from "@/lib/descent";
-import { DOOR_POS } from "@/lib/approach";
-import ApproachCam from "./ApproachCam";
 import BlackOut from "./BlackOut";
 import DaySky from "./DaySky";
-import Debris from "./Debris";
-import DesertDoor from "./DesertDoor";
-import DuneRidges from "./DuneRidges";
-import Floor from "./Floor";
-import GrassField from "./GrassField";
-import HeroDune from "./HeroDune";
-import LeaderButterflies from "./LeaderButterflies";
 import Orb from "./Orb";
 import Sky from "./Sky";
-import Snowfall from "./Snowfall";
-import SnowBurst from "./SnowBurst";
 import Space from "./Space";
+import Splash from "./Splash";
+import Water from "./Water";
 
-// One shot, from a moon hanging in space to glass on concrete.
+// One shot, from a moon hanging in space to a splash on a black lake.
 //
-// There is no cut in it and no second scene: the sphere that shatters is the moon
-// that was hanging there, the floor it lands on was always underneath, and the
+// There is no cut in it and no second scene: the moon that meets the water is the
+// moon that was hanging there, the lake it lands on was always underneath, and the
 // camera falls the whole way down with it. Everything in here — where the camera
 // is, where the moon is, how hard the air is tearing at it — comes out of one
 // timeline in lib/descent, and nothing computes its own version of any of it.
@@ -43,9 +32,9 @@ import Space from "./Space";
 // The camera does not swoop or lead or find anything. It rides beside the moon at
 // a fixed distance, so the moon sits still in the frame and it is the universe
 // that moves, and then it slows to a stop at exactly the height the landing was
-// framed from and lets the thing drop away from it into the shot. That last part
-// is where the whole fall pays off, and it is the one bit of it that is solved
-// rather than animated.
+// framed from and holds there on the water while the moon sinks, a plume rises
+// into two butterflies, and they fall back in. That held shot is where the fall
+// pays off, and it is the one bit of it that is solved rather than animated.
 
 /**
  * How far back the camera sits.
@@ -127,50 +116,36 @@ export function Rig({ nowRef }: { nowRef: React.MutableRefObject<number> }) {
 
 type OrbSceneProps = {
   onImpact?: () => void;
-  onShardsLaunch?: (launch: ShardLaunch) => void;
 };
 
-function Contents({ onImpact, onShardsLaunch }: OrbSceneProps) {
+function Contents({ onImpact }: OrbSceneProps) {
   // Seeded per mount so it never breaks the same way twice. Safe to call
   // Math.random here: the scene is loaded with ssr:false, so there is no
   // server render to disagree with.
   const geometry = useMemo(() => createOrbGeometry(Math.random() * 100), []);
   const nowRef = useRef(0);
-  // The floor only knows it was hit because the sphere tells it, so the flag
-  // lives out here between the two of them.
-  const [struck, setStruck] = useState(false);
 
   return (
     <>
       <Clock nowRef={nowRef} />
       <Warmup />
       <Rig nowRef={nowRef} />
-      <ApproachCam nowRef={nowRef} doorPos={DOOR_POS} />
       {/* No lights anywhere in here. Every material does its own shading, and
-          until the sphere lands there is nothing in this scene to light. */}
+          until the moon meets the water there is nothing in this scene to light.
+          The rig holds the landing framing on the water for the whole ending, so
+          there is no separate approach camera any more. */}
       <DaySky nowRef={nowRef} />
-      <DuneRidges nowRef={nowRef} />
       <Space nowRef={nowRef} />
       <Sky nowRef={nowRef} />
-      <Snowfall nowRef={nowRef} />
-      <Floor y={FLOOR_Y} struck={struck} nowRef={nowRef} />
-      <GrassField nowRef={nowRef} />
-      <Debris nowRef={nowRef} />
-      <SnowBurst nowRef={nowRef} />
-      <HeroDune nowRef={nowRef} />
-      <DesertDoor position={DOOR_POS} nowRef={nowRef} />
-      <LeaderButterflies nowRef={nowRef} doorPos={DOOR_POS} />
-      <Orb
-        geometry={geometry}
-        nowRef={nowRef}
-        onImpact={() => {
-          setStruck(true);
-          onImpact?.();
-        }}
-        onShardsLaunch={onShardsLaunch}
-      />
-      {/* The dark the door opens onto, closing over the lens as we go through.
-          Last thing drawn, so it covers the whole shot. */}
+      {/* The still black lake, the ring the moon lets go of as it sinks, and the
+          smaller rings where the butterflies fall back in. */}
+      <Water nowRef={nowRef} />
+      <Orb geometry={geometry} nowRef={nowRef} onImpact={onImpact} />
+      {/* The plume that rises where the moon went in and becomes two butterflies
+          that arc apart and fall back into the water. */}
+      <Splash nowRef={nowRef} />
+      {/* The dark that closes over the water once they have fallen back in. Last
+          thing drawn, so it covers the whole shot. */}
       <BlackOut nowRef={nowRef} />
     </>
   );

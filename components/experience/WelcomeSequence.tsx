@@ -10,13 +10,13 @@ import Carrier from "./Carrier";
 // It says almost nothing on purpose. Not what he does — the rooms do that — and
 // not even his name, which is waiting in About: putting it here spends the reveal
 // before you have seen anything. Two lines only: a greeting out of the dark, and
-// the one hook — you are reframed as someone who FOUND something, pointed at the
-// threshold about to open. The gap ("a door to what?") does the work. The last
-// line is held longer and followed by a beat of pure dark, because silence
-// withholds too.
+// the one hook — you are placed somewhere that is not quite anywhere, a threshold
+// with no map behind you and rooms about to open ahead. The gap ("somewhere and
+// nowhere?") does the work. The last line is held longer and followed by a beat of
+// pure dark, because silence withholds too.
 const LINES = [
   { text: "hello.", hold: 5150 },
-  { text: "you found the door.", hold: 4200 },
+  { text: "you're between somewhere and nowhere.", hold: 4600 },
 ];
 
 // A beat of pure black after the last line has faded, before the room arrives.
@@ -104,7 +104,11 @@ export default function WelcomeSequence({ onDone }: { onDone: () => void }) {
                 : { duration: 1.3, ease: "easeInOut" }
             }
           >
-            <span className="block whitespace-nowrap text-center font-light tracking-wide text-neutral-100">
+            <span
+              className={`block text-center font-light tracking-wide text-neutral-100 ${
+                isFirst ? "whitespace-nowrap" : ""
+              }`}
+            >
               {current.text}
             </span>
 

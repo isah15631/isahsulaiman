@@ -97,11 +97,11 @@ const CLOUD_FRAG = /* glsl */ `
     if (body <= 0.004) discard;
 
     // No fire on the way in any more: the moon comes down cold, so the deck is
-    // not lit warm from below. As the day comes up it is filled toward a bright,
-    // sunlit grey-white, because a cloud in daylight is the brightest thing in
-    // the sky, not a dark ceiling to pass.
+    // not lit warm from below. As we drop under it the cloud is filled toward a
+    // dim, moonlit grey-blue, a soft night ceiling breaking up rather than a
+    // bright overcast, so the world under it stays the cool dusk of the water.
     vec3 col = uBase;
-    col = mix(col, vec3(0.92, 0.94, 0.98), uDay * 0.85);
+    col = mix(col, vec3(0.34, 0.40, 0.52), uDay * 0.8);
     // Sunlit cloud also holds together instead of thinning to wisps, so it reads
     // as overcast the moment before we drop out the bottom of it into the open.
     float alpha = clamp(body * uAlpha, 0.0, 1.0);

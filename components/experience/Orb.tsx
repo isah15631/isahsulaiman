@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { ORB_RADIUS, type OrbChunk } from "@/lib/orbGeometry";
 import type { ShardLaunch, ShardSeed } from "@/lib/shards";
 import { BEAT, REST_Y, orbY } from "@/lib/descent";
+import { sinkP } from "@/lib/approach";
 
 // It does not fall on its own clock any more.
 //
@@ -99,6 +100,7 @@ const vertexShader = /* glsl */ `
 
 const fragmentShader = /* glsl */ `
   uniform float uShatter;
+  uniform float uSink;   // 0 above the water, 1 fully submerged and gone
   // Where in the noise field this sphere is cut from, so the grain is not
   // identical on every visit.
   uniform vec3 uSeed;
@@ -298,7 +300,9 @@ const fragmentShader = /* glsl */ `
       // and it goes dark at the limb, the way a sphere of dust does
       col *= 1.0 - 0.42 * pow(1.0 - abs(nrm.z), 3.0);
 
-      gl_FragColor = vec4(col, 1.0);
+      // It fades as it sinks under, so the dark water closes over it rather than
+      // it winking out in the air.
+      gl_FragColor = vec4(col, 1.0 - clamp(uSink, 0.0, 1.0));
       return;
     }
 
@@ -381,6 +385,7 @@ export default function Orb({
         side: THREE.DoubleSide,
         uniforms: {
           uShatter: { value: 0 },
+          uSink: { value: 0 },
         uLightObj: { value: new THREE.Vector3(0.86, 0.26, 0.44).normalize() },
           uSeed: {
             value: new THREE.Vector3(
@@ -452,41 +457,43 @@ export default function Orb({
     const now = state.clock.getElapsedTime();
     const t = nowRef.current;
 
+    // Turning the whole way down, and on under the water: on its own axis while it
+    // hangs, harder once the air has hold of it. This is what stops it reading as
+    // a circle sliding down the screen.
+    const spin = t * 0.045 + Math.max(0, t - BEAT.release) * 0.085;
+    mesh.rotation.x = 0.35 + spin;
+    mesh.rotation.z = 0.12 + spin * 0.4;
+    // The sun does not turn with it. The surface is lit in the moon's own frame,
+    // so the light is carried into that frame every time the moon moves, or the
+    // terminator rotates with the rock and reads as a lamp bolted to the surface.
+    sunTmp.copy(SUN).applyQuaternion(spinTmp.copy(mesh.quaternion).invert());
+    material.uniforms.uLightObj.value.copy(sunTmp);
+
     // ---- hanging, and then falling ----
-    if (impactRef.current === null) {
-      // It is a moon before it is anything else, so it is there from the first
-      // frame. Where it is, and how fast, is the descent timeline's business.
+    // It is a moon before it is anything else, so it is there from the first
+    // frame. Where it is, and how fast, is the descent timeline's business.
+    if (t < BEAT.impact) {
       mesh.visible = true;
       mesh.position.y = orbY(t);
-      // Turning, slowly, the whole time: on its own axis while it hangs, and
-      // harder once the air has hold of it. This is what stops it reading as a
-      // circle sliding down the screen.
-      const spin = t * 0.045 + Math.max(0, t - BEAT.release) * 0.085;
-      mesh.rotation.x = 0.35 + spin;
-      mesh.rotation.z = 0.12 + spin * 0.4;
-
-      // The sun does not turn with it. The surface is lit in the moon's own
-      // frame, so the light has to be carried into that frame every time the
-      // moon moves, or the terminator rotates with the rock and the whole thing
-      // reads as a lamp bolted to the surface.
-      sunTmp.copy(SUN).applyQuaternion(spinTmp.copy(mesh.quaternion).invert());
-      material.uniforms.uLightObj.value.copy(sunTmp);
-
-      if (t >= BEAT.impact) {
-        impactRef.current = now;
-        mesh.position.y = REST_Y;
-        onImpact?.();
-        const launch = buildLaunch(state.camera, state.gl.domElement);
-        if (launch) onShardsLaunch?.(launch);
-      }
+      material.uniforms.uSink.value = 0;
       return;
     }
 
-    // ---- the break ----
-    // Driven by wall-clock rather than accumulated frame deltas, so it always
-    // takes the same real time; a slow device simply shows fewer frames of it.
-    const s = Math.min(1, (now - impactRef.current) / SHATTER_SECONDS);
-    material.uniforms.uShatter.value = Math.max(s, 0.0002);
+    // ---- meeting the water, and sinking under ----
+    // Fired once, on the frame it touches: the swell, and the phase change.
+    if (impactRef.current === null) {
+      impactRef.current = now;
+      onImpact?.();
+    }
+    // It goes under whole rather than breaking: carrying the fall's momentum, the
+    // centre punches down fast and the water drags it deep. It stays opaque through
+    // the plunge and only fades once it is genuinely under, so the dark water reads
+    // as closing over it rather than it dissolving in the air.
+    const sp = sinkP(t);
+    mesh.position.y = REST_Y - ORB_RADIUS * 3.0 * sp;
+    const f = Math.min(1, Math.max(0, (sp - 0.45) / 0.5));
+    material.uniforms.uSink.value = f * f * (3 - 2 * f);
+    mesh.visible = sp < 1;
   });
 
   return <mesh ref={meshRef} geometry={geometry} material={material} />;
