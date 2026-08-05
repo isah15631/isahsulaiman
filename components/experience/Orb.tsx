@@ -35,6 +35,12 @@ const SHATTER_END = CONVERT_MIN + CONVERT_SPAN + 0.08;
 
 const glsl = (n: number) => n.toFixed(4);
 
+/** smoothstep, for the CPU-side pulse fade. */
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
 const vertexShader = /* glsl */ `
   uniform float uShatter;
   attribute vec3 aChunkCentre;
@@ -101,6 +107,7 @@ const vertexShader = /* glsl */ `
 const fragmentShader = /* glsl */ `
   uniform float uShatter;
   uniform float uSink;   // 0 above the water, 1 fully submerged and gone
+  uniform float uPulse;  // gentle brightness beat while it hangs, waiting to be tapped
   // Where in the noise field this sphere is cut from, so the grain is not
   // identical on every visit.
   uniform vec3 uSeed;
@@ -300,6 +307,10 @@ const fragmentShader = /* glsl */ `
       // and it goes dark at the limb, the way a sphere of dust does
       col *= 1.0 - 0.42 * pow(1.0 - abs(nrm.z), 3.0);
 
+      // the slow beat of light while it hangs, so it reads as alive and asking to
+      // be touched
+      col *= 1.0 + uPulse;
+
       // It fades as it sinks under, so the dark water closes over it rather than
       // it winking out in the air.
       gl_FragColor = vec4(col, 1.0 - clamp(uSink, 0.0, 1.0));
@@ -386,6 +397,7 @@ export default function Orb({
         uniforms: {
           uShatter: { value: 0 },
           uSink: { value: 0 },
+          uPulse: { value: 0 },
         uLightObj: { value: new THREE.Vector3(0.86, 0.26, 0.44).normalize() },
           uSeed: {
             value: new THREE.Vector3(
@@ -457,10 +469,11 @@ export default function Orb({
     const now = state.clock.getElapsedTime();
     const t = nowRef.current;
 
-    // Turning the whole way down, and on under the water: on its own axis while it
-    // hangs, harder once the air has hold of it. This is what stops it reading as
-    // a circle sliding down the screen.
-    const spin = t * 0.045 + Math.max(0, t - BEAT.release) * 0.085;
+    // Turning: a slow idle turn on the real clock so it is alive even while it
+    // hangs waiting to be tapped, plus the harder turn the air gives it once it is
+    // falling. Idle on the wall clock, not the scene clock, so it keeps turning
+    // while the descent clock is frozen at the hang.
+    const spin = now * 0.05 + Math.max(0, t - BEAT.release) * 0.085;
     mesh.rotation.x = 0.35 + spin;
     mesh.rotation.z = 0.12 + spin * 0.4;
     // The sun does not turn with it. The surface is lit in the moon's own frame,
@@ -468,6 +481,14 @@ export default function Orb({
     // terminator rotates with the rock and reads as a lamp bolted to the surface.
     sunTmp.copy(SUN).applyQuaternion(spinTmp.copy(mesh.quaternion).invert());
     material.uniforms.uLightObj.value.copy(sunTmp);
+
+    // While it still hangs it pulses, a slow beat of brightness and size, so the
+    // one thing to do in the frame reads as: tap it. The beat is on the wall clock
+    // and fades out as it lets go and falls.
+    const hanging = 1 - smoothstep(BEAT.release - 0.2, BEAT.release + 0.3, t);
+    const pulse = 0.5 + 0.5 * Math.sin(now * 2.4);
+    material.uniforms.uPulse.value = pulse * 0.22 * hanging;
+    mesh.scale.setScalar(1 + pulse * 0.03 * hanging);
 
     // ---- hanging, and then falling ----
     // It is a moon before it is anything else, so it is there from the first

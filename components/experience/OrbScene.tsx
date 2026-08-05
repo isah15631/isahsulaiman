@@ -1,10 +1,11 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PerspectiveCamera } from "three";
-import { createOrbGeometry } from "@/lib/orbGeometry";
+import { createOrbGeometry, ORB_RADIUS } from "@/lib/orbGeometry";
 import {
+  BEAT,
   EYE_Y,
   FOV,
   HALF_H,
@@ -60,14 +61,27 @@ export function fitDistance(width: number, height: number) {
  */
 export function Clock({
   nowRef,
+  running = true,
+  offset = 0,
 }: {
   nowRef: React.MutableRefObject<number>;
+  /** While false the clock is frozen at 0 and the moon just hangs. */
+  running?: boolean;
+  /** The scene time the clock begins at once running, so a tap can drop us
+   *  straight to the edge of release rather than replaying the whole hang. */
+  offset?: number;
 }) {
-  const started = useRef<number | null>(null);
+  const base = useRef<number | null>(null);
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
-    if (started.current === null) started.current = t;
-    nowRef.current = t - started.current;
+    if (!running) {
+      // frozen on the hanging frame until the moon is tapped
+      nowRef.current = 0;
+      base.current = null;
+      return;
+    }
+    if (base.current === null) base.current = t - offset;
+    nowRef.current = t - base.current;
   }, -100);
   return null;
 }
@@ -114,6 +128,30 @@ export function Rig({ nowRef }: { nowRef: React.MutableRefObject<number> }) {
   return null;
 }
 
+// Where the clock begins the moment the moon is tapped: a hair short of release,
+// so a beat after the tap it lets go and falls, rather than replaying the hang.
+const RELEASE_OFFSET = BEAT.release - 0.25;
+
+/**
+ * The tap target: an invisible sphere sitting on the hanging moon, larger than
+ * the moon so it is an easy touch on a phone. Tapping it lets the moon go. Mounted
+ * only while it still hangs, and removed once the fall has begun.
+ */
+function MoonTap({ onTap }: { onTap: () => void }) {
+  return (
+    <mesh
+      position={[0, SPACE_Y, 0]}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onTap();
+      }}
+    >
+      <sphereGeometry args={[ORB_RADIUS * 2.8, 16, 16]} />
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+    </mesh>
+  );
+}
+
 type OrbSceneProps = {
   onImpact?: () => void;
 };
@@ -124,10 +162,13 @@ function Contents({ onImpact }: OrbSceneProps) {
   // server render to disagree with.
   const geometry = useMemo(() => createOrbGeometry(Math.random() * 100), []);
   const nowRef = useRef(0);
+  // The moon hangs and pulses until it is tapped; the tap starts the one clock and
+  // the whole descent plays from there.
+  const [running, setRunning] = useState(false);
 
   return (
     <>
-      <Clock nowRef={nowRef} />
+      <Clock nowRef={nowRef} running={running} offset={RELEASE_OFFSET} />
       <Warmup />
       <Rig nowRef={nowRef} />
       {/* No lights anywhere in here. Every material does its own shading, and
@@ -138,13 +179,14 @@ function Contents({ onImpact }: OrbSceneProps) {
       <Space nowRef={nowRef} />
       <Sky nowRef={nowRef} />
       {/* The still black lake, the ring the moon lets go of as it sinks, and the
-          smaller rings where the butterflies fall back in. */}
+          settling ring where the plume falls back in. */}
       <Water nowRef={nowRef} />
       <Orb geometry={geometry} nowRef={nowRef} onImpact={onImpact} />
-      {/* The plume that rises where the moon went in and becomes two butterflies
-          that arc apart and fall back into the water. */}
+      {/* The plume of water that rises where the moon went in and falls back. */}
       <Splash nowRef={nowRef} />
-      {/* The dark that closes over the water once they have fallen back in. Last
+      {/* Tap the hanging moon to let it go. Gone once the fall has begun. */}
+      {!running && <MoonTap onTap={() => setRunning(true)} />}
+      {/* The dark that closes over the water once the plume has settled. Last
           thing drawn, so it covers the whole shot. */}
       <BlackOut nowRef={nowRef} />
     </>
